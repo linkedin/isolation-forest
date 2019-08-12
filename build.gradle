@@ -1,0 +1,9 @@
+allprojects {
+    apply plugin: "eclipse"
+    apply plugin: "idea"
+
+    repositories {
+        jcenter()
+        mavenCentral()
+    }
+}

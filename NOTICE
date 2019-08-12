@@ -1,0 +1,66 @@
+Copyright 2019 LinkedIn Corporation
+All Rights Reserved.
+
+Licensed under the BSD 2-Clause License (the "License").
+See License in the project root for license information.
+
+
+This product includes:
+
+========================================================================
+For Apache Spark and its subcomponents:
+========================================================================
+This project includes components from the Apache Spark project, generally licensed under Apache License 2.0.  However,
+the Apache Spark project contains subcomponents with separate copyright notices and license terms.  Your use of these
+subcomponents are subject to the the terms and conditions of the licenses as set forth in the Apache Spark NOTICE
+Attributions (https://github.com/apache/spark/blob/branch-2.3/NOTICE).
+
+The following files contain modified Apache Spark code:
+
+isolation-forest/src/main/scala/com/linkedin/relevance/isolationforest/BaggedPoint.scala
+isolation-forest/src/main/scala/com/linkedin/relevance/isolationforest/IsolationForestModelReadWrite.scala
+isolation-forest/src/test/scala/com/linkedin/relevance/isolationforest/BaggedPointTest.scala
+
+========================================================================
+External dependencies
+========================================================================
+In addition, this product automatically loads third party code from an external repository
+using the Gradle build system. Such third party code is subject to other license
+terms than as set forth above. In addition, such third party code may also
+depend on and load multiple tiers of dependencies.
+
+========================================================================
+Dataset at isolation-forest/src/test/resources/mammography.csv
+========================================================================
+Shebuti Rayana (2016). ODDS Library [http://odds.cs.stonybrook.edu].
+Stony Brook, NY: Stony Brook University, Department of Computer Science.
+Dataset from http://odds.cs.stonybrook.edu/mammography-dataset/
+
+The original Mammography (Woods et al., 1993) data set was made available by the courtesy of
+Aleksandar Lazarevic. This dataset is publicly available in openML (https://www.openml.org/d/310)
+under Public Domain Mark 1.0.
+
+========================================================================
+Dataset at isolation-forest/src/test/resources/shuttle.csv
+========================================================================
+Shebuti Rayana (2016). ODDS Library [http://odds.cs.stonybrook.edu].
+Stony Brook, NY: Stony Brook University, Department of Computer Science.
+Dataset from http://odds.cs.stonybrook.edu/shuttle-dataset/
+
+Dua, D. and Graff, C. (2019). UCI Machine Learning Repository [http://archive.ics.uci.edu/ml].
+Irvine, CA: University of California, School of Information and Computer Science.
+
+Acknowledgment:
+Thanks to Jason Catlett of Basser Department of Computer Science,
+University of Sydney, N.S.W., Australia for providing the shuttle dataset.
+Thanks also to NASA for allowing us to use the shuttle datasets.
+
+========================================================================
+Acknowledgements
+========================================================================
+
+Some aspects of this library were inspired by the following implementations of the Isolation Forest
+algorithm.
+
+- scikit-learn (3-clause BSD): https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html
+- spark-iforest (Apache 2.0): https://github.com/titicaca/spark-iforest
