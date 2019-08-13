@@ -23,4 +23,19 @@ allprojects {
             }
         }
     }
+
+    plugins.withId("org.shipkit.java-publish") {
+        publishing.publications.javaLibrary.pom.withXml {
+            //refer to Groovy xml Node reference for more info how to manipulate xml
+            asNode().licenses.replaceNode {
+                licenses {
+                    license {
+                        name "BSD 2-CLAUSE"
+                        url "https://github.com/linkedin/isolation-forest/blob/master/LICENSE"
+                        distribution "repo"
+                    }
+                }
+            }
+        }
+    }
 }
