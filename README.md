@@ -48,7 +48,7 @@ Second, add the isolation-forest dependency to the module-level build.gradle fil
 
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest:0.2.1'
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.11:0.2.2'
 }
 ```
 
