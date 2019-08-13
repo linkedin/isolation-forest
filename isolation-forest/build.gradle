@@ -16,3 +16,5 @@ dependencies {
 test {
     useTestNG()
 }
+
+archivesBaseName = "${project.name}_2.11"
