@@ -1,0 +1,26 @@
+shipkit {
+    gitHub.repository = "linkedin/isolation-forest"
+    gitHub.readOnlyAuthToken = "c2a615888e1b91ac44a80b7cbe450f234a14214f"
+    gitHub.writeAuthToken = System.getenv("GH_WRITE_TOKEN")
+}
+
+allprojects {
+    plugins.withId("org.shipkit.bintray") {
+
+        //Bintray configuration is handled by JFrog Bintray Gradle Plugin
+        //For reference see the official documentation: https://github.com/bintray/gradle-bintray-plugin
+        bintray {
+
+            key = System.getenv("BINTRAY_API_KEY")
+
+            pkg {
+                repo = 'maven'
+                user = 'jverbus'
+                userOrg = 'linkedin'
+                name = 'isolation-forest'
+                licenses = ['BSD 2-CLAUSE']
+                labels = ['spark', 'unsupervised learning', 'outlier detection']
+            }
+        }
+    }
+}
