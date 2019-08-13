@@ -26,7 +26,31 @@ It is recommended to use Scala 2.11 and Spark 2.3. To build, run the following:
 ```bash
 ./gradlew build
 ```
-This will produce a jar file in the ``./build/libs/`` directory.
+This will produce a jar file in the ``./isolation-forest/build/libs/`` directory.
+
+### Add an isolation-forest dependency to your project
+
+Artifacts (Scala 2.11.8) for this project are [available on Bintray](https://bintray.com/beta/#/linkedin/maven/isolation-forest).
+
+#### Gradle example
+
+First, add the repository URL to the repositories block in the top-level build.gradle file.
+
+```
+repositories {
+    maven {
+        url "https://dl.bintray.com/linkedin/maven"
+    }
+}
+```
+
+Second, add the isolation-forest dependency to the module-level build.gradle file.
+
+```
+dependencies {
+    compile 'com.linkedin.isolation-forest:isolation-forest:0.2.1'
+}
+```
 
 ### Model parameters
 
