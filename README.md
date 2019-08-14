@@ -1,4 +1,5 @@
 # isolation-forest
+[![Build Status](https://travis-ci.org/linkedin/isolation-forest.svg?branch=master)](https://travis-ci.org/linkedin/isolation-forest)
 
 This is a Scala/Spark implementation of the Isolation Forest unsupervised outlier detection
 algorithm. This library was created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from
@@ -39,7 +40,7 @@ First, add the repository URL to the repositories block in the top-level build.g
 ```
 repositories {
     maven {
-        url "https://dl.bintray.com/linkedin/maven"
+        url  "https://dl.bintray.com/linkedin/maven"
     }
 }
 ```
