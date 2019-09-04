@@ -1,5 +1,7 @@
 # isolation-forest
 [![Build Status](https://travis-ci.org/linkedin/isolation-forest.svg?branch=master)](https://travis-ci.org/linkedin/isolation-forest)
+[![Download](https://api.bintray.com/packages/linkedin/maven/isolation-forest/images/download.svg)](https://bintray.com/linkedin/maven/isolation-forest/_latestVersion)
+[![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
 
 This is a Scala/Spark implementation of the Isolation Forest unsupervised outlier detection
 algorithm. This library was created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from
@@ -45,12 +47,70 @@ repositories {
 }
 ```
 
+The artifacts are available in JCenter, so you can alternatively specify the JCenter repository.
+
+```
+repositories {
+    jcenter()
+}
+```
+
 Second, add the isolation-forest dependency to the module-level build.gradle file.
 
 ```
 dependencies {
     compile 'com.linkedin.isolation-forest:isolation-forest_2.11:0.2.2'
 }
+```
+
+#### Maven example
+
+First, specify the JCenter repository in your Maven config by modifying your ~/.m2/settings.xml file.
+
+```
+<?xml version="1.0" encoding="UTF-8" ?>
+<settings xsi:schemaLocation='http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd'
+          xmlns='http://maven.apache.org/SETTINGS/1.0.0' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>
+
+    <profiles>
+        <profile>
+            <repositories>
+                <repository>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                    <id>central</id>
+                    <name>bintray</name>
+                    <url>https://jcenter.bintray.com</url>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                    <id>central</id>
+                    <name>bintray-plugins</name>
+                    <url>https://jcenter.bintray.com</url>
+                </pluginRepository>
+            </pluginRepositories>
+            <id>bintray</id>
+        </profile>
+    </profiles>
+    <activeProfiles>
+        <activeProfile>bintray</activeProfile>
+    </activeProfiles>
+</settings>
+```
+
+Second, declare the isolation-forest dependency in your project's pom.xml file.
+
+```
+<dependency>
+  <groupId>com.linkedin.isolation-forest</groupId>
+  <artifactId>isolation-forest_2.11</artifactId>
+  <version>0.2.2</version>
+</dependency>
 ```
 
 ### Model parameters
@@ -172,20 +232,20 @@ the isolation forest algorithm to the same 12 datasets using the same model para
 the original paper. We used 10 trials per dataset each with a unique random seed and averaged the
 result. The quoted uncertainty is the one-sigma error on the mean.
 
-| Dataset                                                                            | Expected mean AUROC (from Liu et al.) | Observed mean AUROC (from this implementation) | Observed Std. Dev. AUROC (from this implementation) |
-|------------------------------------------------------------------------------------|---------------------------------------|------------------------------------------------|-----------------------------------------------------|
-| [Http (KDDCUP99)](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/)            | 1.00                                  | 0.99973 &plusmn; 0.00007                       | 0.0002                                              |
-| [ForestCover](http://odds.cs.stonybrook.edu/forestcovercovertype-dataset/)         | 0.88                                  | 0.903 &plusmn; 0.005                           | 0.017                                               |
-| [Mulcross](https://www.openml.org/d/40897)                                         | 0.97                                  | 0.9926 &plusmn; 0.0006                         | 0.0019                                              |
-| [Smtp (KDDCUP99)](http://odds.cs.stonybrook.edu/smtp-kddcup99-dataset/)            | 0.88                                  | 0.907 &plusmn; 0.001                           | 0.004                                               |
-| [Shuttle](http://odds.cs.stonybrook.edu/shuttle-dataset/)                          | 1.00                                  | 0.9974 &plusmn; 0.0014                         | 0.004                                               |
-| [Mammography](http://odds.cs.stonybrook.edu/mammography-dataset/)                  | 0.86                                  | 0.8636 &plusmn; 0.0015                         | 0.005                                               |
-| [Annthyroid](http://odds.cs.stonybrook.edu/annthyroid-dataset/)                    | 0.82                                  | 0.815 &plusmn; 0.006                           | 0.019                                               |
-| [Satellite](http://odds.cs.stonybrook.edu/satellite-dataset/)                      | 0.71                                  | 0.709 &plusmn; 0.004                           | 0.012                                               |
-| [Pima](http://odds.cs.stonybrook.edu/pima-indians-diabetes-dataset/)               | 0.67                                  | 0.651 &plusmn; 0.003                           | 0.010                                               |
-| [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 0.99                                  | 0.9862 &plusmn; 0.0003                         | 0.0010                                              |
-| [Arrhythmia](http://odds.cs.stonybrook.edu/arrhythmia-dataset/)                    | 0.80                                  | 0.804 &plusmn; 0.002                           | 0.008                                               |
-| [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/)                    | 0.85                                  | 0.8481 &plusmn; 0.0002                         | 0.0008                                              |
+| Dataset                                                                            | Expected mean AUROC (from Liu et al.) | Observed mean AUROC (from this implementation) |
+|------------------------------------------------------------------------------------|---------------------------------------|------------------------------------------------|
+| [Http (KDDCUP99)](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/)            | 1.00                                  | 0.99973 &plusmn; 0.00007                       |
+| [ForestCover](http://odds.cs.stonybrook.edu/forestcovercovertype-dataset/)         | 0.88                                  | 0.903 &plusmn; 0.005                           |
+| [Mulcross](https://www.openml.org/d/40897)                                         | 0.97                                  | 0.9926 &plusmn; 0.0006                         |
+| [Smtp (KDDCUP99)](http://odds.cs.stonybrook.edu/smtp-kddcup99-dataset/)            | 0.88                                  | 0.907 &plusmn; 0.001                           |
+| [Shuttle](http://odds.cs.stonybrook.edu/shuttle-dataset/)                          | 1.00                                  | 0.9974 &plusmn; 0.0014                         |
+| [Mammography](http://odds.cs.stonybrook.edu/mammography-dataset/)                  | 0.86                                  | 0.8636 &plusmn; 0.0015                         |
+| [Annthyroid](http://odds.cs.stonybrook.edu/annthyroid-dataset/)                    | 0.82                                  | 0.815 &plusmn; 0.006                           |
+| [Satellite](http://odds.cs.stonybrook.edu/satellite-dataset/)                      | 0.71                                  | 0.709 &plusmn; 0.004                           |
+| [Pima](http://odds.cs.stonybrook.edu/pima-indians-diabetes-dataset/)               | 0.67                                  | 0.651 &plusmn; 0.003                           |
+| [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 0.99                                  | 0.9862 &plusmn; 0.0003                         |
+| [Arrhythmia](http://odds.cs.stonybrook.edu/arrhythmia-dataset/)                    | 0.80                                  | 0.804 &plusmn; 0.002                           |
+| [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/)                    | 0.85                                  | 0.8481 &plusmn; 0.0002                         |
 
 Our implementation provides AUROC values that are in very good agreement the results in the original
 Liu et al. publication. There are a few very small discrepancies that are likely due the limited
