@@ -33,7 +33,11 @@ This will produce a jar file in the ``./isolation-forest/build/libs/`` directory
 
 ### Add an isolation-forest dependency to your project
 
-Artifacts (Scala 2.11.8) for this project are [available on Bintray](https://bintray.com/beta/#/linkedin/maven/isolation-forest).
+Artifacts (built with Scala 2.11.8 and Spark 2.3.0) for this project are
+[available on Bintray](https://bintray.com/beta/#/linkedin/maven/isolation-forest).
+If you want to use the library with Spark 2.4, you will need to
+[modify the dependencies](https://github.com/linkedin/isolation-forest/issues/1) in the module-level
+build.gradle file and build your own jar.
 
 #### Gradle example
 
