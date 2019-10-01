@@ -37,6 +37,16 @@ trait IsolationForestParams extends Params {
   def setBootstrap(value: Boolean): this.type = set(bootstrap, value)
   final def getBootstrap: Boolean = $(bootstrap)
 
+  final val contaminationError = new DoubleParam(this, "contaminationError",
+    "The error allowed when calculating the threshold required to achieve the specified" +
+      " contamination fraction. The default is 0.0, which forces an exact calculation of the" +
+      " threshold. The exact calculation is slow and can fail for large datasets. If there are" +
+      " issues with the exact calculation, a good choice for this parameter is often 1% of the" +
+      " specified contamination value.",
+    ParamValidators.inRange(0.0, 1, lowerInclusive = true, upperInclusive = true))
+  def setContaminationError(value: Double): this.type = set(contaminationError, value)
+  final def getContaminationError: Double = $(contaminationError)
+
   final val randomSeed = new LongParam(this, "randomSeed", "The seed used for the random" +
     " number generator.",  ParamValidators.gt(0.0))
   def setRandomSeed(value: Long): this.type = set(randomSeed, value)
@@ -58,6 +68,7 @@ trait IsolationForestParams extends Params {
     numEstimators -> 100,
     maxSamples -> 256,
     contamination -> 0.0,
+    contaminationError -> 0.0,
     maxFeatures -> 1.0,
     bootstrap -> false,
     randomSeed -> 1,

@@ -7,6 +7,7 @@ package com.linkedin.relevance.isolationforest
 private[isolationforest] object Utils extends Serializable {
 
   case class DataPoint(features: Array[Float])
+  case class OutlierScore(score: Double)
 
   val EulerConstant = 0.5772156649f
 
