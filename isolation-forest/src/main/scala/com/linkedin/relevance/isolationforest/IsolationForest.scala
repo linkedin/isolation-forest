@@ -146,21 +146,33 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
       isolationForestModel.setOutlierScoreThreshold(outlierScoreThreshold)
 
       // Determine labels for each instance using the newly calculated threshold and verify that the
-      // fraction of positive labels is in agreement with the user specified contamination.
+      // fraction of positive labels is in agreement with the user specified contamination. Issue
+      // a warning if the observed contamination in the scored training data is outside the expected
+      // bounds.
+      //
+      // If the user specifies a non-zero contaminationError model parameter, then the
+      // verificationError used for the verification calculation is equal to the
+      // contaminationError parameter value. If the user selects an "exact" calculation of the
+      // threshold by setting the parameter contaminationError = 0.0, then assume a
+      // verificationError equal to 1% of the contamination parameter value for the validation
+      // calculation.
       val observedContamination = scores
         .map(outlierScore => if(outlierScore.score >= outlierScoreThreshold) 1.0 else 0.0)
         .reduce(_ + _) / scores.count()
-      val effectiveError = if (${contaminationError} == 0.0) {
+      val verificationError = if (${contaminationError} == 0.0) {
         // If the threshold is calculated exactly, then assume a relative 1% error on the specified
         // contamination for the verification.
         $(contamination) * 0.01
       } else {
         ${contaminationError}
       }
-      if (math.abs(observedContamination - $(contamination)) > effectiveError) {
+      if (math.abs(observedContamination - $(contamination)) > verificationError) {
 
         logWarning(s"Observed contamination is ${observedContamination}, which is outside" +
-          s" the expected range of ${${contamination}} +/- ${effectiveError}.")
+          s" the expected range of ${${contamination}} +/- ${verificationError}. If this is" +
+          s" acceptable to you, then it is OK to proceed. If there is a very large discrepancy" +
+          s" between observed and expected values, then please try retraining the model with an" +
+          s" exact threshold calculation (set the contaminationError parameter value to 0.0).")
       }
     } else {
       // Do not set the outlier score threshold, which ensures no outliers are found. This speeds up

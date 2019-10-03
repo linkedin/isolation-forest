@@ -176,7 +176,8 @@ val data = assembler
 /**
   * Train the model
   */
- 
+
+val contamination = 0.1
 val isolationForest = new IsolationForest()
   .setNumEstimators(100)
   .setBootstrap(false)
@@ -185,15 +186,16 @@ val isolationForest = new IsolationForest()
   .setFeaturesCol("features")
   .setPredictionCol("predictedLabel")
   .setScoreCol("outlierScore")
-  .setContamination(0.1)
+  .setContamination(contamination)
+  .setContaminationError(0.01 * contamination)
   .setRandomSeed(1)
- 
+
 val isolationForestModel = isolationForest.fit(data)
  
 /**
   * Score the training data
   */
- 
+
 val dataWithScores = isolationForestModel.transform(data)
 
 // scala> dataWithScores.printSchema
