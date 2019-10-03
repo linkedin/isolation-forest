@@ -37,8 +37,8 @@ build.gradle file before building.
 
 ### Add an isolation-forest dependency to your project
 
-Artifacts (built with Scala 2.11.8 and Spark 2.3.0) for this project are
-[available on Bintray](https://bintray.com/beta/#/linkedin/maven/isolation-forest).
+Please check [Bintray](https://bintray.com/beta/#/linkedin/maven/isolation-forest) for the latest
+artifact versions (built with Scala 2.11.8 and Spark 2.3.0).
 
 #### Gradle example
 
@@ -64,7 +64,7 @@ Second, add the isolation-forest dependency to the module-level build.gradle fil
 
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.11:0.2.2'
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.11:0.3.0'
 }
 ```
 
@@ -114,23 +114,24 @@ Second, declare the isolation-forest dependency in your project's pom.xml file.
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_2.11</artifactId>
-  <version>0.2.2</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
 ### Model parameters
 
-| Parameter     | Default Value    | Description                                                                                                                                                                                                          |
-|---------------|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| numEstimators | 100              | The number of trees in the ensemble.                                                                                                                                                                                 |
-| maxSamples    | 256              | The number of samples used to train each tree. If this value is between 0.0 and 1.0, then it is treated as a fraction. If it is >1.0, then it is treated as a count.                                                 |
-| contamination | 0.0              | The fraction of outliers in the training data set. If this is set to 0.0, it speeds up the training and all predicted labels will be false. The model and outlier scores are otherwise unaffected by this parameter. |
-| maxFeatures   | 1.0              | The number of features used to train each tree. If this value is between 0.0 and 1.0, then it is treated as a fraction. If it is >1.0, then it is treated as a count.                                                |
-| bootstrap     | false            | If true, draw sample for each tree with replacement. If false, do not sample with replacement.                                                                                                                       |
-| randomSeed    | 1                | The seed used for the random number generator.                                                                                                                                                                       |
-| featuresCol   | "features"       | The feature vector. This column must exist in the input DataFrame for training and scoring.                                                                                                                          |
-| predictionCol | "predictedLabel" | The predicted label. This column is appended to the input DataFrame upon scoring.                                                                                                                                    |
-| scoreCol      | "outlierScore"   | The outlier score. This column is appended to the input DataFrame upon scoring.          
+| Parameter          | Default Value    | Description                                                                                                                                                                                                                                                                                                                                                                          |
+|--------------------|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| numEstimators      | 100              | The number of trees in the ensemble.                                                                                                                                                                                                                                                                                                                                                 |
+| maxSamples         | 256              | The number of samples used to train each tree. If this value is between 0.0 and 1.0, then it is treated as a fraction. If it is >1.0, then it is treated as a count.                                                                                                                                                                                                                 |
+| contamination      | 0.0              | The fraction of outliers in the training data set. If this is set to 0.0, it speeds up the training and all predicted labels will be false. The model and outlier scores are otherwise unaffected by this parameter.                                                                                                                                                                 |
+| contaminationError | 0.0              | The error allowed when calculating the threshold required to achieve the specified contamination fraction. The default is 0.0, which forces an exact calculation of the threshold. The exact calculation is slow and can fail for large datasets. If there are issues with the exact calculation, a good choice for this parameter is often 1% of the specified contamination value. |
+| maxFeatures        | 1.0              | The number of features used to train each tree. If this value is between 0.0 and 1.0, then it is treated as a fraction. If it is >1.0, then it is treated as a count.                                                                                                                                                                                                                |
+| bootstrap          | false            | If true, draw sample for each tree with replacement. If false, do not sample with replacement.                                                                                                                                                                                                                                                                                       |
+| randomSeed         | 1                | The seed used for the random number generator.                                                                                                                                                                                                                                                                                                                                       |
+| featuresCol        | "features"       | The feature vector. This column must exist in the input DataFrame for training and scoring.                                                                                                                                                                                                                                                                                          |
+| predictionCol      | "predictedLabel" | The predicted label. This column is appended to the input DataFrame upon scoring.                                                                                                                                                                                                                                                                                                    |
+| scoreCol           | "outlierScore"   | The outlier score. This column is appended to the input DataFrame upon scoring.                                                                                                                                                                                                                                                                                                      |
 
 ### Training and scoring
 
@@ -175,7 +176,8 @@ val data = assembler
 /**
   * Train the model
   */
- 
+
+val contamination = 0.1
 val isolationForest = new IsolationForest()
   .setNumEstimators(100)
   .setBootstrap(false)
@@ -184,15 +186,16 @@ val isolationForest = new IsolationForest()
   .setFeaturesCol("features")
   .setPredictionCol("predictedLabel")
   .setScoreCol("outlierScore")
-  .setContamination(0.1)
+  .setContamination(contamination)
+  .setContaminationError(0.01 * contamination)
   .setRandomSeed(1)
- 
+
 val isolationForestModel = isolationForest.fit(data)
  
 /**
   * Score the training data
   */
- 
+
 val dataWithScores = isolationForestModel.transform(data)
 
 // scala> dataWithScores.printSchema

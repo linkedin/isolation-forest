@@ -1,6 +1,6 @@
 package com.linkedin.relevance.isolationforest
 
-import com.linkedin.relevance.isolationforest.Utils.DataPoint
+import com.linkedin.relevance.isolationforest.Utils.{DataPoint, OutlierScore}
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
@@ -130,24 +130,58 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
     val isolationForestModel = copyValues(
       new IsolationForestModel(uid, isolationTrees, numSamples).setParent(this))
 
+    // Determine and set the model threshold based upon the specified contamination and
+    // contaminationError parameters.
     if ($(contamination) > 0.0) {
       // Score all training instances to determine the threshold required to achieve the desired
       // level of contamination. The approxQuantile method uses the algorithm in this paper:
       // https://dl.acm.org/citation.cfm?id=375670
-      // The relative error was set to ensure the fraction of samples found to be outliers during
-      // training is within 1% of the value of the parameter $(contamination).
-      val outlierScoreThreshold = isolationForestModel
+      val scores = isolationForestModel
         .transform(df)
-        .stat.approxQuantile($(scoreCol), Array(1 - $(contamination)), $(contamination) * 0.01)
+        .map(row => OutlierScore(row.getAs[Double]($(scoreCol))))
+        .cache()
+      val outlierScoreThreshold = scores
+        .stat.approxQuantile("score", Array(1 - $(contamination)), $(contaminationError))
         .head
       isolationForestModel.setOutlierScoreThreshold(outlierScoreThreshold)
+
+      // Determine labels for each instance using the newly calculated threshold and verify that the
+      // fraction of positive labels is in agreement with the user specified contamination. Issue
+      // a warning if the observed contamination in the scored training data is outside the expected
+      // bounds.
+      //
+      // If the user specifies a non-zero contaminationError model parameter, then the
+      // verificationError used for the verification calculation is equal to the
+      // contaminationError parameter value. If the user selects an "exact" calculation of the
+      // threshold by setting the parameter contaminationError = 0.0, then assume a
+      // verificationError equal to 1% of the contamination parameter value for the validation
+      // calculation.
+      val observedContamination = scores
+        .map(outlierScore => if(outlierScore.score >= outlierScoreThreshold) 1.0 else 0.0)
+        .reduce(_ + _) / scores.count()
+      val verificationError = if (${contaminationError} == 0.0) {
+        // If the threshold is calculated exactly, then assume a relative 1% error on the specified
+        // contamination for the verification.
+        $(contamination) * 0.01
+      } else {
+        ${contaminationError}
+      }
+      if (math.abs(observedContamination - $(contamination)) > verificationError) {
+
+        logWarning(s"Observed contamination is ${observedContamination}, which is outside" +
+          s" the expected range of ${${contamination}} +/- ${verificationError}. If this is" +
+          s" acceptable to you, then it is OK to proceed. If there is a very large discrepancy" +
+          s" between observed and expected values, then please try retraining the model with an" +
+          s" exact threshold calculation (set the contaminationError parameter value to 0.0).")
+      }
     } else {
       // Do not set the outlier score threshold, which ensures no outliers are found. This speeds up
       // the algorithm runtime by avoiding the approxQuantile calculation.
-      logWarning(s"Contamination parameter was set to ${$(contamination)}, so all predicted" +
+      logInfo(s"Contamination parameter was set to ${$(contamination)}, so all predicted" +
         " labels will be false. The model and outlier scores are otherwise not affected by this" +
         " parameter choice.")
     }
+
     isolationForestModel
   }
 
