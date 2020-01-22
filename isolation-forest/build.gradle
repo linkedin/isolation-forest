@@ -1,16 +1,21 @@
+import org.gradle.util.VersionNumber
+
 plugins {
     // Apply the scala plugin to add support for Scala
     id 'scala'
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
 }
 
 def sparkVersion = findProperty("sparkVersion") ?: "2.3.0"
 
+println "Spark version: " + sparkVersion
+
 dependencies {
     compile("com.chuusai:shapeless_2.11:2.3.2")
-    if(sparkVersion.equals("2.3.0")) {
-        compile("com.databricks:spark-avro_2.11:4.0.0")
-    } else { 
+    if(VersionNumber.parse(sparkVersion) >= VersionNumber.parse("2.4.0")) {
         compile("org.apache.spark:spark-avro_2.11:2.4.0")
+    } else { 
+        compile("com.databricks:spark-avro_2.11:4.0.0")
     }
     compile("org.apache.spark:spark-core_2.11:" + sparkVersion)
     compile("org.apache.spark:spark-mllib_2.11:" + sparkVersion)
