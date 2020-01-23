@@ -12,7 +12,7 @@ println "Spark version: " + sparkVersion
 dependencies {
     compile("com.chuusai:shapeless_2.11:2.3.2")
     if(VersionNumber.parse(sparkVersion) >= VersionNumber.parse("2.4.0")) {
-        compile("org.apache.spark:spark-avro_2.11:2.4.0")
+        compile("org.apache.spark:spark-avro_2.11:" + sparkVersion)
     } else { 
         compile("com.databricks:spark-avro_2.11:4.0.0")
     }
@@ -27,4 +27,4 @@ test {
     useTestNG()
 }
 
-archivesBaseName = "${project.name}_2.11"
+archivesBaseName = "${project.name}_${sparkVersion}_2.11"
