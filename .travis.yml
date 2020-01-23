@@ -20,6 +20,6 @@ branches:
 
 #Build and perform release (if needed)
 script:
-  - ./gradlew build -s && ./gradlew ciPerformRelease
+  - ./gradlew build -s -PsparkVersion=2.3.0 && ./gradlew build -s -PsparkVersion=2.4.3 && ./gradlew ciPerformRelease -PsparkVersion=2.3.0
 
 dist: trusty
