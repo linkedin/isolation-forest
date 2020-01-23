@@ -24,16 +24,18 @@ See [License](LICENSE) in the project root for license information.
 
 ### Building the library
 
-It is recommended to use Scala 2.11 and Spark 2.3. To build, run the following:
+It is recommended to use Scala 2.11.8 and Spark 2.3.0. To build, run the following:
 
 ```bash
 ./gradlew build
 ```
 This will produce a jar file in the ``./isolation-forest/build/libs/`` directory.
 
-If you want to use the library with Spark 2.4, you will need to
-[modify the dependencies](https://github.com/linkedin/isolation-forest/issues/1) in the module-level
-build.gradle file before building.
+If you want to use the library with Spark 2.4, you can specify this when running the build command.
+
+```bash
+./gradlew build -PsparkVersion=2.4.3
+```
 
 ### Add an isolation-forest dependency to your project
 
