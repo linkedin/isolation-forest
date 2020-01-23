@@ -3,7 +3,6 @@ import org.gradle.util.VersionNumber
 plugins {
     // Apply the scala plugin to add support for Scala
     id 'scala'
-    id 'com.github.johnrengelman.shadow' version '5.2.0'
 }
 
 def sparkVersion = findProperty("sparkVersion") ?: "2.3.0"
