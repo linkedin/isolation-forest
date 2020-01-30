@@ -66,7 +66,7 @@ Second, add the isolation-forest dependency to the module-level build.gradle fil
 
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.11:0.3.0'
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.3.0_2.11:0.3.2'
 }
 ```
 
@@ -115,8 +115,8 @@ Second, declare the isolation-forest dependency in your project's pom.xml file.
 ```
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
-  <artifactId>isolation-forest_2.11</artifactId>
-  <version>0.3.0</version>
+  <artifactId>isolation-forest_2.3.0_2.11</artifactId>
+  <version>0.3.2</version>
 </dependency>
 ```
 
