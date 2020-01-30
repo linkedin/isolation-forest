@@ -2,6 +2,8 @@ shipkit {
     gitHub.repository = "linkedin/isolation-forest"
     gitHub.readOnlyAuthToken = "c2a615888e1b91ac44a80b7cbe450f234a14214f"
     gitHub.writeAuthToken = System.getenv("GH_WRITE_TOKEN")
+
+    team.developers = ['jverbus:James Verbus']
 }
 
 allprojects {
@@ -20,6 +22,7 @@ allprojects {
                 name = 'isolation-forest'
                 licenses = ['BSD 2-CLAUSE']
                 labels = ['spark', 'unsupervised learning', 'outlier detection']
+                description = 'A Spark/Scala implementation of the isolation forest unsupervised outlier detection algorithm.'
             }
         }
     }
