@@ -1,6 +1,6 @@
 package com.linkedin.relevance.isolationforest
 
-import com.linkedin.relevance.isolationforest.Utils.{avgPathLength, DataPoint}
+import com.linkedin.relevance.isolationforest.Utils.avgPathLength
 import org.apache.spark.ml.Model
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
@@ -62,7 +62,7 @@ class IsolationForestModel(
 
     val calculatePathLength = (features: Vector) => {
       val pathLength = broadcastIsolationTrees.value
-        .map(y => y.calculatePathLength(DataPoint(features.toArray.map(x => x.toFloat))))
+        .map(y => y.calculatePathLength(features))
         .sum / $(numEstimators)
       Math.pow(2, -pathLength / avgPath)
     }

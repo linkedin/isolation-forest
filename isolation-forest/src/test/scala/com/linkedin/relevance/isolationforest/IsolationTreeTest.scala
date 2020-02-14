@@ -5,7 +5,7 @@ import com.linkedin.relevance.isolationforest.TestUtils._
 import com.linkedin.relevance.isolationforest.Utils.DataPoint
 import org.testng.Assert
 import org.testng.annotations.Test
-
+import org.apache.spark.ml.linalg.Vectors
 
 class IsolationTreeTest {
 
@@ -14,11 +14,11 @@ class IsolationTreeTest {
 
     val data = readCsv("src/test/resources/shuttle.csv")
 
-    val dataArray = data.map(x => DataPoint(x.slice(0, data.head.length - 1)))  // Drop labels column
+    val dataArray = data.map(x => Vectors.dense(x.slice(0, data.head.length - 1).map(_.toDouble).toArray))  // Drop labels column
 
     val heightLimit = 15
     val randomState = new scala.util.Random(1)
-    val featureIndicies = dataArray.head.features.indices.toArray
+    val featureIndicies = (0 until dataArray.head.size).toArray
     val root = IsolationTree
       .generateIsolationTree(dataArray, heightLimit, randomState, featureIndicies)
 
@@ -32,8 +32,8 @@ class IsolationTreeTest {
     val rightChild = ExternalNode(20)
     val root = InternalNode(leftChild, rightChild, 0, 1.5)
 
-    val data1 = DataPoint(Array(1.0f))
-    val data2 = DataPoint(Array(2.0f))
+    val data1 = Vectors.dense(Array(1.0))
+    val data2 = Vectors.sparse(1, Array(0), Array(2.0))
 
     val pathLength1 = IsolationTree.pathLength(data1, root)
     val pathLength2 = IsolationTree.pathLength(data2, root)
