@@ -2,7 +2,6 @@ package com.linkedin.relevance.isolationforest
 
 import com.linkedin.relevance.isolationforest.Nodes.{ExternalNode, InternalNode}
 import com.linkedin.relevance.isolationforest.TestUtils._
-import com.linkedin.relevance.isolationforest.Utils.DataPoint
 import org.testng.Assert
 import org.testng.annotations.Test
 import org.apache.spark.ml.linalg.Vectors
