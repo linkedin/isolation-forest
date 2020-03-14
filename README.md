@@ -40,21 +40,11 @@ If you want to use the library with Spark 2.4, you can specify this when running
 ### Add an isolation-forest dependency to your project
 
 Please check [Bintray](https://bintray.com/beta/#/linkedin/maven/isolation-forest) for the latest
-artifact versions (built with Scala 2.11.8 and Spark 2.3.0).
+artifact versions (built with Scala 2.11.8 and both Spark 2.3.0 and Spark 2.4.3).
 
 #### Gradle example
 
-First, add the repository URL to the repositories block in the top-level build.gradle file.
-
-```
-repositories {
-    maven {
-        url  "https://dl.bintray.com/linkedin/maven"
-    }
-}
-```
-
-The artifacts are available in JCenter, so you can alternatively specify the JCenter repository.
+The artifacts are available in JCenter, so you can specify the JCenter repository in the top-level build.gradle file.
 
 ```
 repositories {
@@ -62,7 +52,7 @@ repositories {
 }
 ```
 
-Second, add the isolation-forest dependency to the module-level build.gradle file.
+Add the isolation-forest dependency to the module-level build.gradle file.
 
 ```
 dependencies {
@@ -70,52 +60,32 @@ dependencies {
 }
 ```
 
+An artifact built using Spark 2.4.3 is also available.
+
+```
+dependencies {
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.11:0.3.2'
+}
+```
+
 #### Maven example
 
-First, specify the JCenter repository in your Maven config by modifying your ~/.m2/settings.xml file.
-
-```
-<?xml version="1.0" encoding="UTF-8" ?>
-<settings xsi:schemaLocation='http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd'
-          xmlns='http://maven.apache.org/SETTINGS/1.0.0' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>
-
-    <profiles>
-        <profile>
-            <repositories>
-                <repository>
-                    <snapshots>
-                        <enabled>false</enabled>
-                    </snapshots>
-                    <id>central</id>
-                    <name>bintray</name>
-                    <url>https://jcenter.bintray.com</url>
-                </repository>
-            </repositories>
-            <pluginRepositories>
-                <pluginRepository>
-                    <snapshots>
-                        <enabled>false</enabled>
-                    </snapshots>
-                    <id>central</id>
-                    <name>bintray-plugins</name>
-                    <url>https://jcenter.bintray.com</url>
-                </pluginRepository>
-            </pluginRepositories>
-            <id>bintray</id>
-        </profile>
-    </profiles>
-    <activeProfiles>
-        <activeProfile>bintray</activeProfile>
-    </activeProfiles>
-</settings>
-```
-
-Second, declare the isolation-forest dependency in your project's pom.xml file.
+If you are using the Maven Central repository, declare the isolation-forest dependency in your project's pom.xml file.
 
 ```
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_2.3.0_2.11</artifactId>
+  <version>0.3.2</version>
+</dependency>
+```
+
+An artifact built using Spark 2.4.3 is also available.
+
+```
+<dependency>
+  <groupId>com.linkedin.isolation-forest</groupId>
+  <artifactId>isolation-forest_2.4.3_2.11</artifactId>
   <version>0.3.2</version>
 </dependency>
 ```
