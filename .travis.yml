@@ -18,19 +18,24 @@ jobs:
       env: SPARK_VERSION=2.4.3
     - scala: 2.12.11
       env: SPARK_VERSION=2.4.3
+    # The upload stage is an inelegant way to automatically publish all artifact variants until the following Shipkit
+    # issue is resolved: https://github.com/mockito/shipkit/issues/858
     - stage: upload
       scala: 2.11.8
       env: SPARK_VERSION=2.3.0
-      script: ./gradlew releaseNeeded | grep -q "Skipping release because publications are identical."
-        && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION;
+      script: ./gradlew releaseNeeded | grep -q "Releasing"
+        && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
+        || true;
     - scala: 2.11.8
       env: SPARK_VERSION=2.4.3
-      script: ./gradlew releaseNeeded | grep -q "Skipping release because publications are identical."
-        && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION;
+      script: ./gradlew releaseNeeded | grep -q "Releasing"
+        && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
+        || true;
     - scala: 2.12.11
       env: SPARK_VERSION=2.4.3
-      script: ./gradlew releaseNeeded | grep -q "Skipping release because publications are identical."
-        && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION;
+      script: ./gradlew releaseNeeded | grep -q "Releasing"
+        && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
+        || true;
     - stage: release
       scala: 2.11.8
       env: SPARK_VERSION=2.3.0
