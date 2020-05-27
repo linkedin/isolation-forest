@@ -1,25 +1,39 @@
 # More details on how to configure the Travis build
 # https://docs.travis-ci.com/user/customizing-the-build/
 
+dist: trusty
+
 language: scala
-scala:
-  - 2.11.8
 
 jdk:
   - oraclejdk8
 
-#Skipping install step to avoid having Travis run arbitrary './gradlew assemble' task
+jobs:
+  include:
+    - scala: 2.11.8
+      env: SPARK_VERSION=2.3.0 PERFORM_RELEASE=true  # Only one build should have PERFORM_RELEASE=true.
+    - scala: 2.11.8
+      env: SPARK_VERSION=2.4.3 PERFORM_RELEASE=false
+    - scala: 2.12.11
+      env: SPARK_VERSION=2.4.3 PERFORM_RELEASE=false
+
+# Skipping install step to avoid having Travis run arbitrary './gradlew assemble' task
 # https://docs.travis-ci.com/user/customizing-the-build/#Skipping-the-Installation-Step
 install:
   - true
 
-#Don't build tags
+# Don't build tags
 branches:
   except:
   - /^v\d/
 
-#Build and perform release (if needed)
+# Build and perform release (if needed).
+# Currently, only one build is released using Shipkit. Once Shipkit supports releasing multiple builds under the same
+# version, we will automatically publish the artifacts from all builds.
+# https://github.com/mockito/shipkit/issues/858
 script:
-  - ./gradlew build -s && ./gradlew ciPerformRelease
-
-dist: trusty
+  - if [ $PERFORM_RELEASE == true ]; then
+      ./gradlew build -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION && ./gradlew ciPerformRelease;
+    else
+      ./gradlew build -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION;
+    fi
