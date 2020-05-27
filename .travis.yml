@@ -21,7 +21,6 @@ jobs:
     - scala: 2.12.11
       env: SPARK_VERSION=2.3.0
   include:
-    - stage: tests
       script: ./gradlew build -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION;
     - stage: release
       script: ./gradlew build -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION && ./gradlew ciPerformRelease;
