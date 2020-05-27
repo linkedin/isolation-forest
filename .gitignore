@@ -1,10 +1,8 @@
 .gradle
-*/build
+build/
 .DS_Store
 .idea
 spark-warehouse
 *.ipr
 *.iml
 *.iws
-
-isolation-forest/bin
