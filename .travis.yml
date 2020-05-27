@@ -19,19 +19,21 @@ jobs:
     - scala: 2.12.11
       env: SPARK_VERSION=2.4.3
     - stage: upload
-      if: branch = master
       script: ./gradlew bintrayUpload -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
       scala: 2.11.8
       env: SPARK_VERSION=2.3.0
+      if: branch = master
     - scala: 2.11.8
       env: SPARK_VERSION=2.4.3
+      if: branch = master
     - scala: 2.12.11
       env: SPARK_VERSION=2.4.3
-    - stage: release
       if: branch = master
+    - stage: release
       script: ./gradlew build -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION && ./gradlew ciPerformRelease;
       scala: 2.11.8
       env: SPARK_VERSION=2.3.0
+      if: branch = master
 
 # Skipping install step to avoid having Travis run arbitrary './gradlew assemble' task
 # https://docs.travis-ci.com/user/customizing-the-build/#Skipping-the-Installation-Step
