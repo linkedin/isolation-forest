@@ -19,14 +19,12 @@ jobs:
     - scala: 2.12.11
       env: SPARK_VERSION=2.4.3
     - stage: publish
-    - script: ./gradlew bintrayUpload -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
+      script: ./gradlew bintrayUpload -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
       scala: 2.11.8
       env: SPARK_VERSION=2.3.0
-    - script: ./gradlew bintrayUpload -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
-      scala: 2.11.8
+    - scala: 2.11.8
       env: SPARK_VERSION=2.4.3
-    - script: ./gradlew bintrayUpload -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
-      scala: 2.12.11
+    - scala: 2.12.11
       env: SPARK_VERSION=2.4.3
     - stage: release
       script: ./gradlew build -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION && ./gradlew ciPerformRelease;
