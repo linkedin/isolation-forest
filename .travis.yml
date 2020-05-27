@@ -5,30 +5,27 @@ dist: trusty
 
 language: scala
 
+scala:
+  - 2.11.8
+  - 2.12.11
+
+env:
+  - SPARK_VERSION=2.3.0
+  - SPARK_VERSION=2.4.3
+
 jdk:
   - oraclejdk8
 
 jobs:
+  exclude:
+    - scala: 2.12.11
+      env: SPARK_VERSION=2.3.0
   include:
     - stage: tests
       script: ./gradlew build -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION;
-    - scala: 2.11.8
-      env: SPARK_VERSION=2.3.0
-    - scala: 2.11.8
-      env: SPARK_VERSION=2.4.3
-    - scala: 2.12.11
-      env: SPARK_VERSION=2.4.3
-    - stage: upload
-      script: ./gradlew bintrayUpload -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION;
-    - scala: 2.11.8
-      env: SPARK_VERSION=2.3.0
-    - scala: 2.11.8
-      env: SPARK_VERSION=2.4.3
-    - scala: 2.12.11
-      env: SPARK_VERSION=2.4.3
     - stage: release
       script: ./gradlew build -s -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION && ./gradlew ciPerformRelease;
-    - scala: 2.11.8
+      scala: 2.11.8
       env: SPARK_VERSION=2.3.0
 
 # Skipping install step to avoid having Travis run arbitrary './gradlew assemble' task
