@@ -23,19 +23,19 @@ jobs:
     - stage: upload
       scala: 2.11.8
       env: SPARK_VERSION=2.3.0
-      script: ./gradlew releaseNeeded | grep -q "Releasing"
+      script: ./gradlew releaseNeeded | grep "Releasing"
         && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
-        || true;
+        || echo "No release needed.";
     - scala: 2.11.8
       env: SPARK_VERSION=2.4.3
-      script: ./gradlew releaseNeeded | grep -q "Releasing"
+      script: ./gradlew releaseNeeded | grep "Releasing"
         && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
-        || true;
+        || echo "No release needed.";
     - scala: 2.12.11
       env: SPARK_VERSION=2.4.3
-      script: ./gradlew releaseNeeded | grep -q "Releasing"
+      script: ./gradlew releaseNeeded | grep "Releasing"
         && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION
-        || true;
+        || echo "No release needed.";
     - stage: release
       scala: 2.11.8
       env: SPARK_VERSION=2.3.0
