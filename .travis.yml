@@ -18,6 +18,8 @@ jobs:
       env: SPARK_VERSION=2.4.3
     - scala: 2.12.11
       env: SPARK_VERSION=2.4.3
+    - scala: 2.12.11
+      env: SPARK_VERSION=3.0.0
     # The upload stage is an inelegant way to automatically publish all artifact variants until the following Shipkit
     # issue is resolved: https://github.com/mockito/shipkit/issues/858
     # The baseline (Spark 2.3.0 and Scala 2.11.8) version is uploaded by the subsequent release stage.
@@ -29,6 +31,11 @@ jobs:
         || echo "No release needed.";
     - scala: 2.12.11
       env: SPARK_VERSION=2.4.3
+      script: ./gradlew releaseNeeded | grep "Releasing"
+        && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION -x :bintrayPublish -x :bintrayUpload
+        || echo "No release needed.";
+    - scala: 2.12.11
+      env: SPARK_VERSION=3.0.0
       script: ./gradlew releaseNeeded | grep "Releasing"
         && ./gradlew bintrayUpload -PscalaVersion=$TRAVIS_SCALA_VERSION -PsparkVersion=$SPARK_VERSION -x :bintrayPublish -x :bintrayUpload
         || echo "No release needed.";
