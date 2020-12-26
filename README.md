@@ -38,10 +38,10 @@ build command.
 ./gradlew build -PsparkVersion=2.4.3
 ```
 
-You can also build an artifact with Spark 2.4 and Scala 2.12.
+You can also build an artifact with Spark 2.4 (or 3.0) and Scala 2.12.
 
 ```bash
-./gradlew build -PsparkVersion=2.4.3 -PscalaVersion=2.12.11
+./gradlew build -PsparkVersion=3.0.0 -PscalaVersion=2.12.11
 ```
 
 ### Add an isolation-forest dependency to your project
@@ -64,17 +64,22 @@ Spark/Scala version combinations.
 
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.3.0_2.11:1.0.0'
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.3.0_2.11:1.0.1'
 }
 ```
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.11:1.0.0'
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.11:1.0.1'
 }
 ```
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.12:1.0.0'
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.12:1.0.1'
+}
+```
+```
+dependencies {
+    compile 'com.linkedin.isolation-forest:isolation-forest_3.0.0_2.12:1.0.1'
 }
 ```
 
@@ -87,21 +92,28 @@ Here are some examples for multiple recent Spark/Scala version combinations.
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_2.3.0_2.11</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 ```
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_2.4.3_2.11</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 ```
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_2.4.3_2.12</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
+</dependency>
+```
+```
+<dependency>
+  <groupId>com.linkedin.isolation-forest</groupId>
+  <artifactId>isolation-forest_3.0.0_2.12</artifactId>
+  <version>1.0.1</version>
 </dependency>
 ```
 
