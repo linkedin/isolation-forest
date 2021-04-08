@@ -53,7 +53,7 @@ jobs:
     needs: build
     # Release job, only for pushes to the main development branch
     if: github.event_name == 'push'
-      && github.ref == 'refs/heads/main'
+      && github.ref == 'refs/heads/master'
       && github.repository == 'linkedin/isolation-forest'
       && !contains(toJSON(github.event.commits.*.message), '[skip release]')
     steps:
