@@ -67,11 +67,11 @@ publishing {
                 }
                 issueManagement {
                     url = 'https://github.com/linkedin/isolation-forest/issues'
-                    system = 'GitHub issues'
+                    system = 'GitHub Issues'
                 }
                 ciManagement {
-                    url = 'https://travis-ci.com/linkedin/isolation-forest'
-                    system = 'Travis CI'
+                    url = 'https://github.com/linkedin/isolation-forest/actions/workflows/ci.yml'
+                    system = 'GitHub Actions'
                 }
             }
         }
