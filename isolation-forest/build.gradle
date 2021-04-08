@@ -32,3 +32,5 @@ test {
 }
 
 archivesBaseName = "${project.name}_${sparkVersion}_${scalaVersionShort}"
+
+apply from: "$rootDir/gradle/java-publication.gradle"

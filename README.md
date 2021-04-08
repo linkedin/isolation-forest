@@ -44,6 +44,11 @@ You can also build an artifact with Spark 2.4 (or 3.0) and Scala 2.12.
 ./gradlew build -PsparkVersion=3.0.0 -PscalaVersion=2.12.11
 ```
 
+To force a rebuild of the library, you can use:
+```bash
+./gradlew clean build --no-build-cache
+```
+
 ### Add an isolation-forest dependency to your project
 
 Please check [Bintray](https://bintray.com/beta/#/linkedin/maven/isolation-forest) for the latest

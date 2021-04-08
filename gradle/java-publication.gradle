@@ -1,0 +1,93 @@
+apply plugin: "java"
+
+def licenseSpec = copySpec {
+    from project.rootDir
+    include "LICENSE"
+    include "NOTICE"
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier 'sources'
+    from sourceSets.main.allSource
+    with licenseSpec
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier 'javadoc'
+    from tasks.javadoc
+    with licenseSpec
+}
+
+jar {
+    with licenseSpec
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+apply plugin: "maven-publish"  // https://docs.gradle.org/current/userguide/publishing_maven.html
+publishing {
+    publications {
+        isolationForestJar(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+
+            artifactId = project.archivesBaseName
+
+            pom {
+                name = artifactId
+                description = "A Spark/Scala implementation of the isolation forest unsupervised outlier detection algorithm."
+
+                url = "https://github.com/linkedin/isolation-forest"
+                licenses {
+                    license {
+                        name = 'BSD 2-CLAUSE'
+                        url = 'https://github.com/linkedin/isolation-forest/blob/master/LICENSE'
+                        distribution = 'repo'
+                    }
+                }
+                developers {
+                    [
+                            'jverbus:James Verbus'
+                    ].each { devData ->
+                        developer {
+                            def devInfo = devData.split(':')
+                            id = devInfo[0]
+                            name = devInfo[1]
+                            url = 'https://github.com/' + devInfo[0]
+                            roles = ["Core developer"]
+                        }
+                    }
+                }
+                scm {
+                    url = 'https://github.com/linkedin/isolation-forest.git'
+                }
+                issueManagement {
+                    url = 'https://github.com/linkedin/isolation-forest/issues'
+                    system = 'GitHub issues'
+                }
+                ciManagement {
+                    url = 'https://travis-ci.com/linkedin/isolation-forest'
+                    system = 'Travis CI'
+                }
+            }
+        }
+    }
+
+    // Useful for testing - running "publish" will create artifacts/pom in a local dir.
+    repositories { maven { url = "$rootProject.buildDir/repo" } }
+}
+
+// Fleshes out problems with Maven pom generation when building.
+tasks.build.dependsOn("publishIsolationForestJarPublicationToMavenLocal")
+
+apply plugin: 'signing'  // https://docs.gradle.org/current/userguide/signing_plugin.html
+signing {
+    if (System.getenv("PGP_KEY")) {
+        useInMemoryPgpKeys(System.getenv("PGP_KEY"), System.getenv("PGP_PWD"))
+        sign publishing.publications.isolationForestJar
+    }
+}

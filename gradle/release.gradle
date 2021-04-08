@@ -1,0 +1,39 @@
+//
+// Shipkit tasks
+//
+
+// Plugin jars are added to the buildscript classpath in the root build.gradle file.
+apply plugin: "org.shipkit.shipkit-auto-version"  // https://github.com/shipkit/shipkit-auto-version
+
+apply plugin: "org.shipkit.shipkit-changelog"  // https://github.com/shipkit/shipkit-changelog
+tasks.named("generateChangelog") {
+    previousRevision = project.ext.'shipkit-auto-version.previous-tag'
+    githubToken = System.getenv("GITHUB_TOKEN")
+    repository = "linkedin/isolation-forest"
+}
+
+apply plugin: "org.shipkit.shipkit-github-release"  // https://github.com/shipkit/shipkit-changelog
+tasks.named("githubRelease") {
+    def genTask = tasks.named("generateChangelog").get()
+    dependsOn genTask
+    repository = genTask.repository
+    changelog = genTask.outputFile
+    githubToken = System.getenv("GITHUB_TOKEN")
+    newTagRevision = System.getenv("GITHUB_SHA")
+}
+
+//
+// Maven Central configuration
+//
+
+apply plugin: "io.github.gradle-nexus.publish-plugin"  // https://github.com/gradle-nexus/publish-plugin/
+nexusPublishing {
+    repositories {
+        if (System.getenv("SONATYPE_PWD")) {
+            sonatype {
+                username = System.getenv("SONATYPE_USER")
+                password = System.getenv("SONATYPE_PWD")
+            }
+        }
+    }
+}
