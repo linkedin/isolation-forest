@@ -1,6 +1,21 @@
-plugins {
-    id "org.shipkit.java" version "2.3.0"
+buildscript {
+    repositories {
+        jcenter()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "io.github.gradle-nexus:publish-plugin:1.+"
+        classpath "org.shipkit:shipkit-auto-version:1.+"
+        classpath "org.shipkit:shipkit-changelog:1.+"
+    }
 }
+
+plugins {
+}
+
+apply from: "gradle/release.gradle"
 
 allprojects {
     apply plugin: "eclipse"
@@ -12,4 +27,8 @@ allprojects {
         jcenter()
         mavenCentral()
     }
+}
+
+task clean(type: Delete) {
+    delete "build"
 }
