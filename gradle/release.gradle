@@ -1,3 +1,5 @@
+import java.time.Duration
+
 //
 // Shipkit tasks
 //
@@ -35,5 +37,15 @@ nexusPublishing {
                 password = System.getenv("SONATYPE_PWD")
             }
         }
+    }
+
+    connectTimeout = Duration.ofMinutes(15)
+    clientTimeout = Duration.ofMinutes(15)
+
+    transitionCheckOptions {
+        // We have many artifacts so Maven Central takes a long time on its compliance checks. This sets the timeout for
+        // waiting for the repository to close to a comfortable 60 minutes.
+        maxRetries.set(360)
+        delayBetween.set(Duration.ofSeconds(10))
     }
 }
