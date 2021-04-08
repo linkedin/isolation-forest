@@ -3,10 +3,11 @@
 [![Release](https://img.shields.io/github/v/release/linkedin/isolation-forest)](https://github.com/linkedin/isolation-forest/releases/)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
 
-We have moved from Bintray to [Maven Central](https://oss.sonatype.org/#nexus-search;quick~isolation-forest).
+We have moved from Bintray to [Maven Central](https://repo.maven.apache.org/maven2/com/linkedin/isolation-forest/).
 
 As of version [2.0.0](https://github.com/linkedin/isolation-forest/releases/tag/v2.0.0), we are only publishing
-artifacts to Maven Central instead than Bintray, which is approaching end of life.
+artifacts to Maven Central instead than Bintray. Bintray is
+[approaching its end of life](https://jfrog.com/blog/into-the-sunset-bintray-jcenter-gocenter-and-chartcenter/).
 
 ## Introduction
 
@@ -15,8 +16,8 @@ algorithm. This library was created by [James Verbus](https://www.linkedin.com/i
 the LinkedIn Anti-Abuse AI team.
 
 This library supports distributed training and scoring using Spark data structures. It inherits from
-the ``Estimator`` and ``Model`` classes in [Spark's ML library](https://spark.apache.org/docs/2.3.0/ml-guide.html)
-in order to take advantage of machinery such as ``Pipeline``s. Model persistence on HDFS is
+the `Estimator` and `Model` classes in [Spark's ML library](https://spark.apache.org/docs/2.3.0/ml-guide.html)
+in order to take advantage of machinery such as `Pipeline`s. Model persistence on HDFS is
 supported.
 
 ## Copyright
@@ -36,7 +37,7 @@ It is recommended to use Scala 2.11.8 and Spark 2.3.0. To build, run the followi
 ```bash
 ./gradlew build
 ```
-This will produce a jar file in the ``./isolation-forest/build/libs/`` directory.
+This will produce a jar file in the `./isolation-forest/build/libs/` directory.
 
 If you want to use the library with Spark 2.4 (and the Scala 2.11.8 default), you can specify this when running the
 build command.
@@ -58,7 +59,7 @@ To force a rebuild of the library, you can use:
 
 ### Add an isolation-forest dependency to your project
 
-Please check [Maven Central](https://oss.sonatype.org/#nexus-search;quick~isolation-forest) for the latest
+Please check [Maven Central](https://repo.maven.apache.org/maven2/com/linkedin/isolation-forest/) for the latest
 artifact versions.
 
 #### Gradle example
@@ -77,22 +78,22 @@ Spark/Scala version combinations.
 
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.3.0_2.11:1.0.1'
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.3.0_2.11:2.0.4'
 }
 ```
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.11:1.0.1'
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.11:2.0.4'
 }
 ```
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.12:1.0.1'
+    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.12:2.0.4'
 }
 ```
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_3.0.0_2.12:1.0.1'
+    compile 'com.linkedin.isolation-forest:isolation-forest_3.0.0_2.12:2.0.4'
 }
 ```
 
@@ -105,28 +106,28 @@ Here are some examples for multiple recent Spark/Scala version combinations.
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_2.3.0_2.11</artifactId>
-  <version>1.0.1</version>
+  <version>2.0.4</version>
 </dependency>
 ```
 ```
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_2.4.3_2.11</artifactId>
-  <version>1.0.1</version>
+  <version>2.0.4</version>
 </dependency>
 ```
 ```
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_2.4.3_2.12</artifactId>
-  <version>1.0.1</version>
+  <version>2.0.4</version>
 </dependency>
 ```
 ```
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_3.0.0_2.12</artifactId>
-  <version>1.0.1</version>
+  <version>2.0.4</version>
 </dependency>
 ```
 
@@ -147,11 +148,11 @@ Here are some examples for multiple recent Spark/Scala version combinations.
 
 ### Training and scoring
 
-Here is an example demonstrating how to import the library, create a new ``IsolationForest``
-instance, set the model hyperparameters, train the model, and then score the training data.``data``
-is a Spark DataFrame with a column named ``features`` that contains a 
-``org.apache.spark.ml.linalg.Vector`` of the attributes to use for training. In this example, the
-DataFrame ``data`` also has a ``labels`` column; it is not used in the training process, but could
+Here is an example demonstrating how to import the library, create a new `IsolationForest`
+instance, set the model hyperparameters, train the model, and then score the training data.`data`
+is a Spark DataFrame with a column named `features` that contains a
+`org.apache.spark.ml.linalg.Vector` of the attributes to use for training. In this example, the
+DataFrame `data` also has a `labels` column; it is not used in the training process, but could
 be useful for model evaluation.
 
 ```scala
@@ -218,13 +219,13 @@ val dataWithScores = isolationForestModel.transform(data)
 //  |-- predictedLabel: double (nullable = false)
 ```
 
-The output DataFrame, ``dataWithScores``, is identical to the input ``data`` DataFrame but has two
+The output DataFrame, `dataWithScores`, is identical to the input `data` DataFrame but has two
 additional result columns appended with their names set via model parameters; in this case, these
-are named ``predictedLabel`` and ``outlierScore``.
+are named `predictedLabel` and `outlierScore`.
 
 ### Saving and loading a trained model
 
-Once you've trained an ``isolationForestModel`` instance as per the instructions above, you can use the
+Once you've trained an `isolationForestModel` instance as per the instructions above, you can use the
 following commands to save the model to HDFS and reload it as needed.
 
 ```scala
