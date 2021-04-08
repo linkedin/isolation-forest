@@ -149,7 +149,7 @@ Here are some examples for multiple recent Spark/Scala version combinations.
 ### Training and scoring
 
 Here is an example demonstrating how to import the library, create a new `IsolationForest`
-instance, set the model hyperparameters, train the model, and then score the training data.`data`
+instance, set the model hyperparameters, train the model, and then score the training data. `data`
 is a Spark DataFrame with a column named `features` that contains a
 `org.apache.spark.ml.linalg.Vector` of the attributes to use for training. In this example, the
 DataFrame `data` also has a `labels` column; it is not used in the training process, but could
