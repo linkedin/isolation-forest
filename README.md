@@ -1,7 +1,14 @@
 # isolation-forest
-[![Build Status](https://travis-ci.org/linkedin/isolation-forest.svg?branch=master)](https://travis-ci.org/linkedin/isolation-forest)
-[![Download](https://api.bintray.com/packages/linkedin/maven/isolation-forest/images/download.svg)](https://bintray.com/linkedin/maven/isolation-forest/_latestVersion)
+[![Build Status](https://github.com/linkedin/isolation-forest/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/linkedin/isolation-forest/actions/workflows/ci.yml?query=branch%3Amaster+event%3Apush)
+[![Release](https://img.shields.io/github/v/release/linkedin/isolation-forest)](https://github.com/linkedin/isolation-forest/releases/)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
+
+We have moved from Bintray to [Maven Central](https://oss.sonatype.org/#nexus-search;quick~isolation-forest).
+
+As of version [2.0.0](https://github.com/linkedin/isolation-forest/releases/tag/v2.0.0), we are only publishing
+artifacts to Maven Central instead than Bintray, which is approaching end of life.
+
+## Introduction
 
 This is a Scala/Spark implementation of the Isolation Forest unsupervised outlier detection
 algorithm. This library was created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from
@@ -51,20 +58,21 @@ To force a rebuild of the library, you can use:
 
 ### Add an isolation-forest dependency to your project
 
-Please check [Bintray](https://bintray.com/beta/#/linkedin/maven/isolation-forest) for the latest
+Please check [Maven Central](https://oss.sonatype.org/#nexus-search;quick~isolation-forest) for the latest
 artifact versions.
 
 #### Gradle example
 
-The artifacts are available in JCenter, so you can specify the JCenter repository in the top-level build.gradle file.
+The artifacts are available in Maven Central, so you can specify the Maven Central repository in the top-level
+`build.gradle` file.
 
 ```
 repositories {
-    jcenter()
+    mavenCentral()
 }
 ```
 
-Add the isolation-forest dependency to the module-level build.gradle file. Here are some examples for multiple recent
+Add the isolation-forest dependency to the module-level `build.gradle` file. Here are some examples for multiple recent
 Spark/Scala version combinations.
 
 ```
@@ -90,7 +98,7 @@ dependencies {
 
 #### Maven example
 
-If you are using the Maven Central repository, declare the isolation-forest dependency in your project's pom.xml file.
+If you are using the Maven Central repository, declare the isolation-forest dependency in your project's `pom.xml` file.
 Here are some examples for multiple recent Spark/Scala version combinations.
 
 ```
