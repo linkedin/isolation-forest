@@ -1,8 +1,8 @@
 package com.linkedin.relevance.isolationforest
 
 import com.linkedin.relevance.isolationforest.Nodes.{ExternalNode, InternalNode, Node}
-import com.linkedin.relevance.isolationforest.Utils.DataPoint
 import org.apache.spark.internal.Logging
+import org.apache.spark.ml.linalg.Vector
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
@@ -25,7 +25,7 @@ private[isolationforest] class IsolationTree(val node: Node) extends Serializabl
     * @param dataInstance The feature array for a single data instance.
     * @return The path length to the instance.
     */
-  private[isolationforest] def calculatePathLength(dataInstance: DataPoint): Float =
+  private[isolationforest] def calculatePathLength(dataInstance: Vector): Float =
     pathLength(dataInstance, node)
 }
 
@@ -44,7 +44,7 @@ private[isolationforest] case object IsolationTree extends Logging {
     *                       particular tree.
     * @return A trained isolation tree object.
     */
-  def fit(data: Array[DataPoint], randomSeed: Long, featureIndices: Array[Int]): IsolationTree = {
+  def fit(data: Array[Vector], randomSeed: Long, featureIndices: Array[Int]): IsolationTree = {
 
     logInfo(s"Fitting isolation tree with random seed ${randomSeed} on" +
     s" ${featureIndices.seq.toString} features (indices) using ${data.length} data points.")
@@ -72,7 +72,7 @@ private[isolationforest] case object IsolationTree extends Logging {
    * @return The root node of the isolation tree.
    */
   def generateIsolationTree(
-    data: Array[DataPoint],
+    data: Array[Vector],
     heightLimit: Int,
     randomState: Random,
     featureIndices: Array[Int]): Node = {
@@ -90,7 +90,7 @@ private[isolationforest] case object IsolationTree extends Logging {
      * @return The root node of the isolation tree.
      */
     def generateIsolationTreeInternal(
-      data: Array[DataPoint],
+      data: Array[Vector],
       currentTreeHeight: Int,
       heightLimit: Int,
       randomState: Random,
@@ -103,7 +103,7 @@ private[isolationforest] case object IsolationTree extends Logging {
         * @return Tuple containing the feature index and the split value. Feature index is -1 if no
         *         features could be split.
         */
-      def getFeatureToSplit(data: Array[DataPoint]): (Int, Double) = {
+      def getFeatureToSplit(data: Array[Vector]): (Int, Double) = {
 
         val availableFeatures = featureIndices.to[ListBuffer]
         var foundFeature = false
@@ -117,7 +117,7 @@ private[isolationforest] case object IsolationTree extends Logging {
         while (!foundFeature && availableFeatures.nonEmpty) {
           val featureIndexTrial = availableFeatures
             .remove(randomState.nextInt(availableFeatures.length))
-          val featureValues = data.map(x => x.features(featureIndexTrial))
+          val featureValues = data.map(x => x.apply(featureIndexTrial))
           val minFeatureValue = featureValues.min.toDouble
           val maxFeatureValue = featureValues.max.toDouble
 
@@ -137,8 +137,8 @@ private[isolationforest] case object IsolationTree extends Logging {
       if (featureIndex == -1 || currentTreeHeight >= heightLimit || numInstances <= 1)
         ExternalNode(numInstances)
       else {
-        val dataLeft = data.filter(x => x.features(featureIndex) < featureSplitValue)
-        val dataRight = data.filter(x => x.features(featureIndex) >= featureSplitValue)
+        val dataLeft = data.filter(x => x.apply(featureIndex) < featureSplitValue)
+        val dataRight = data.filter(x => x.apply(featureIndex) >= featureSplitValue)
 
         InternalNode(
           generateIsolationTreeInternal(dataLeft, currentTreeHeight + 1, heightLimit, randomState, featureIndices),
@@ -159,7 +159,7 @@ private[isolationforest] case object IsolationTree extends Logging {
     * @param node              The root node of the tree used to calculate the path length.
     * @return The path length to the instance.
     */
-  def pathLength(dataInstance: DataPoint, node: Node): Float = {
+  def pathLength(dataInstance: Vector, node: Node): Float = {
 
     /**
       * This recursive method returns the path length from a node of an isolation tree to the node
@@ -173,7 +173,7 @@ private[isolationforest] case object IsolationTree extends Logging {
       * @return The path length to the instance.
       */
     @tailrec
-    def pathLengthInternal(dataInstance: DataPoint, node: Node, currentPathLength: Float): Float = {
+    def pathLengthInternal(dataInstance: Vector, node: Node, currentPathLength: Float): Float = {
 
       node match {
         case externalNode: ExternalNode =>
@@ -181,7 +181,7 @@ private[isolationforest] case object IsolationTree extends Logging {
         case internalNode: InternalNode =>
           val splitAttribute = internalNode.splitAttribute
           val splitValue = internalNode.splitValue
-          if (dataInstance.features(splitAttribute) < splitValue) {
+          if (dataInstance.apply(splitAttribute) < splitValue) {
             pathLengthInternal(dataInstance, internalNode.leftChild, currentPathLength + 1)
           } else {
             pathLengthInternal(dataInstance, internalNode.rightChild, currentPathLength + 1)

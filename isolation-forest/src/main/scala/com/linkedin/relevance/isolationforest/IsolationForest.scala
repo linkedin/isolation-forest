@@ -1,6 +1,6 @@
 package com.linkedin.relevance.isolationforest
 
-import com.linkedin.relevance.isolationforest.Utils.{DataPoint, OutlierScore}
+import com.linkedin.relevance.isolationforest.Utils.OutlierScore
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
@@ -41,12 +41,13 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
     // Validate schema, extract features column, and convert to Dataset
     transformSchema(data.schema, logging = true)
     val df = data.toDF()
+    implicit val vectorEncoder = org.apache.spark.sql.Encoders.kryo[Vector]
     val dataset = df.map(row =>
-      DataPoint(row.getAs[Vector]($(featuresCol)).toArray.map(x => x.toFloat)))
+      row.getAs[Vector]($(featuresCol)))
 
     // Validate $(maxFeatures) and $(maxSamples) against input dataset and determine the values
     // actually used to train the model: numFeatures and numSamples
-    val totalNumFeatures = dataset.head.features.length
+    val totalNumFeatures = dataset.head.size
     val numFeatures = if ($(maxFeatures) > 1.0) {
       math.floor($(maxFeatures)).toInt
     } else {
@@ -114,7 +115,7 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
         logWarning(s"Isolation tree with random seed ${seed} is trained using" +
           s" ${dataForTree.length} data points instead of user specified ${numSamples}")
 
-      val featureIndices = rnd.shuffle(0 to dataForTree.head.features.length - 1).toArray
+      val featureIndices = rnd.shuffle(0 to dataForTree.head.size - 1).toArray
         .take(numFeatures).sorted
       if (featureIndices.length != numFeatures)
         logWarning(s"Isolation tree with random seed ${seed} is trained using" +
