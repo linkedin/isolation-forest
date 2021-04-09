@@ -26,7 +26,7 @@ import scala.util.Random
   * @param datum Data instance.
   * @param subsampleWeights Weight of this instance in each subsampled dataset.
   */
-private[isolationforest] case class BaggedPoint[Datum](datum: Datum, subsampleWeights: Array[Double])
+case class BaggedPoint[Datum](datum: Datum, subsampleWeights: Array[Double])
   extends Serializable {
 
   require(subsampleWeights.forall( weight => weight >= 0 ), "All values in subsampleWeights Array" +
@@ -56,7 +56,7 @@ private[isolationforest] case class BaggedPoint[Datum](datum: Datum, subsampleWe
 /**
   * Companion object for BaggedPoint for defining constructors that create the subsampleWeights.
   */
-private[isolationforest] case object BaggedPoint {
+case object BaggedPoint {
 
   /**
     * Enforces the parameter constraints for BaggedPoint constructors.

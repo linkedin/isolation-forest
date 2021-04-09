@@ -25,7 +25,7 @@ import org.json4s.jackson.JsonMethods.{compact, parse, render}
   * case classes. A trained IsolationForestModel can be written (read) to (from) HDFS using these
   * classes.
   */
-private[isolationforest] case object IsolationForestModelReadWrite extends Logging {
+case object IsolationForestModelReadWrite extends Logging {
 
   val NullNodeId: Int = -1
   val NullSplitAttribute: Int = -1

@@ -4,7 +4,7 @@ package com.linkedin.relevance.isolationforest
 /**
   * Useful utilities.
   */
-private[isolationforest] object Utils extends Serializable {
+object Utils extends Serializable {
 
   case class DataPoint(features: Array[Float])
   case class OutlierScore(score: Double)

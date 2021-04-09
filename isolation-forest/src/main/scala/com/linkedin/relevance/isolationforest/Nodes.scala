@@ -4,7 +4,7 @@ package com.linkedin.relevance.isolationforest
 /**
   * Contains the node classes used to construct isolation trees.
   */
-private[isolationforest] case object Nodes {
+case object Nodes {
 
   /**
     * Base trait Nodes used in the isolation forest.

@@ -14,7 +14,7 @@ import scala.util.Random
   *
   * @param node The root node of the isolation tree model.
   */
-private[isolationforest] class IsolationTree(val node: Node) extends Serializable {
+class IsolationTree(val node: Node) extends Serializable {
 
   import IsolationTree._
 
@@ -25,14 +25,14 @@ private[isolationforest] class IsolationTree(val node: Node) extends Serializabl
     * @param dataInstance The feature array for a single data instance.
     * @return The path length to the instance.
     */
-  private[isolationforest] def calculatePathLength(dataInstance: DataPoint): Float =
+  def calculatePathLength(dataInstance: DataPoint): Float =
     pathLength(dataInstance, node)
 }
 
 /**
   * Companion object used to train the IsolationTree class.
   */
-private[isolationforest] case object IsolationTree extends Logging {
+case object IsolationTree extends Logging {
 
   /**
     * Fits a single isolation tree to the input data.
