@@ -128,7 +128,7 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
     }).collect()
 
     val isolationForestModel = copyValues(
-      new IsolationForestModel(uid, isolationTrees, numSamples).setParent(this))
+      new IsolationForestModel(uid, isolationTrees, numSamples, numFeatures).setParent(this))
 
     // Determine and set the model threshold based upon the specified contamination and
     // contaminationError parameters.
