@@ -16,15 +16,23 @@ import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
   *
   * @param uid The immutable unique ID for the model.
   * @param isolationTrees The array of isolation tree models that compose the isolation forest.
+  * @param numSamples The number of samples used to train each tree.
+  * @param numFeatures The user-specified number of features used to train each isolation tree. For certain edge cases,
+  *                    a given isolation tree may not have any nodes using some of these features, e.g., a shallow tree
+  *                    where the number of features in the training data exceeds the number of nodes in the tree.
   */
 class IsolationForestModel(
   override val uid: String,
   val isolationTrees: Array[IsolationTree],
-  private val numSamples: Int)
+  private val numSamples: Int,
+  private val numFeatures: Int)
   extends Model[IsolationForestModel] with IsolationForestParams with MLWritable {
 
   require(numSamples > 0, s"parameter numSamples must be >0, but given invalid value ${numSamples}")
   final def getNumSamples: Int = numSamples
+
+  require(numFeatures > 0, s"parameter numFeatures must be >0, but given invalid value ${numFeatures}")
+  final def getNumFeatures: Int = numFeatures
 
   // The outlierScoreThreshold needs to be a mutable variable because it is not known when an
   // IsolationForestModel instance is created.
@@ -40,7 +48,7 @@ class IsolationForestModel(
 
   override def copy(extra: ParamMap): IsolationForestModel = {
 
-    val isolationForestCopy = new IsolationForestModel(uid, isolationTrees, numSamples)
+    val isolationForestCopy = new IsolationForestModel(uid, isolationTrees, numSamples, numFeatures)
       .setParent(this.parent)
     isolationForestCopy.setOutlierScoreThreshold(outlierScoreThreshold)
     copyValues(isolationForestCopy, extra)
