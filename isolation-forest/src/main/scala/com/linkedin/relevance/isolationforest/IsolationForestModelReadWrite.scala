@@ -49,6 +49,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
       implicit val format = DefaultFormats
       val (metadata, treesData) = loadImpl(path, sparkSession)
       val numSamples = (metadata.metadata \ "numSamples").extract[Int]
+      val numFeatures = (metadata.metadata \ "numFeatures").extract[Int]
       val outlierScoreThreshold = (metadata.metadata \ "outlierScoreThreshold").extract[Double]
 
       val trees = treesData.map {
@@ -56,7 +57,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
         case externalNode: ExternalNode => new IsolationTree(externalNode.asInstanceOf[ExternalNode])
       }
 
-      val model = new IsolationForestModel(metadata.uid, trees, numSamples)
+      val model = new IsolationForestModel(metadata.uid, trees, numSamples, numFeatures)
       metadata.setParams(model)
       model.setOutlierScoreThreshold(outlierScoreThreshold)
 
@@ -237,7 +238,8 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
 
       val extraMetadata: JObject =
         ("outlierScoreThreshold", instance.getOutlierScoreThreshold) ~
-          ("numSamples", instance.getNumSamples)
+          ("numSamples", instance.getNumSamples) ~
+          ("numFeatures", instance.getNumFeatures)
       saveImplHelper(path, sparkSession, extraMetadata)
     }
 
@@ -246,7 +248,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
       *
       * @param path The path on disk used to save the ensemble model.
       * @param spark The SparkSession instance to use.
-      * @param extraMetadata Metadata such as outlierScoreThreshold and numSamples.
+      * @param extraMetadata Metadata such as outlierScoreThreshold, numSamples, and numFeatures.
       */
     private def saveImplHelper(path: String, spark: SparkSession, extraMetadata: JObject): Unit = {
 

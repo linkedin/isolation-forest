@@ -47,6 +47,7 @@ class IsolationForestModelWriteReadTest extends Logging {
       isolationForestModel1.extractParamMap.toString,
       isolationForestModel2.extractParamMap.toString)
     Assert.assertEquals(isolationForestModel1.getNumSamples, isolationForestModel2.getNumSamples)
+    Assert.assertEquals(isolationForestModel1.getNumFeatures, isolationForestModel2.getNumFeatures)
     Assert.assertEquals(
       isolationForestModel1.getOutlierScoreThreshold,
       isolationForestModel2.getOutlierScoreThreshold)
@@ -110,6 +111,7 @@ class IsolationForestModelWriteReadTest extends Logging {
       isolationForestModel1.extractParamMap.toString,
       isolationForestModel2.extractParamMap.toString)
     Assert.assertEquals(isolationForestModel1.getNumSamples, isolationForestModel2.getNumSamples)
+    Assert.assertEquals(isolationForestModel1.getNumFeatures, isolationForestModel2.getNumFeatures)
     Assert.assertEquals(
       isolationForestModel1.getOutlierScoreThreshold,
       isolationForestModel2.getOutlierScoreThreshold)
@@ -207,7 +209,7 @@ class IsolationForestModelWriteReadTest extends Logging {
     val spark = getSparkSession
 
     // Create an isolation forest model with no isolation trees
-    val isolationForestModel1 = new IsolationForestModel("testUid", Array(), 1)
+    val isolationForestModel1 = new IsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
     isolationForestModel1.setOutlierScoreThreshold(0.5)
 
     // Write the trained model to disk and then read it back from disk
@@ -221,6 +223,7 @@ class IsolationForestModelWriteReadTest extends Logging {
       isolationForestModel1.extractParamMap.toString,
       isolationForestModel2.extractParamMap.toString)
     Assert.assertEquals(isolationForestModel1.getNumSamples, isolationForestModel2.getNumSamples)
+    Assert.assertEquals(isolationForestModel1.getNumFeatures, isolationForestModel2.getNumFeatures)
     Assert.assertEquals(
       isolationForestModel1.getOutlierScoreThreshold,
       isolationForestModel2.getOutlierScoreThreshold)
