@@ -164,10 +164,10 @@ private[isolationforest] case object BaggedPoint {
         subsampleWeightBase + (if (rnd.nextFloat() < subsampleWeightDiff) 1 else 0)
     }
 
-    baggedRdd.flatMap {
-      baggedPoint => baggedPoint.subsampleWeights.zipWithIndex.flatMap {
+    baggedRdd.flatMap { baggedPoint =>
+      baggedPoint.subsampleWeights.zipWithIndex.flatMap {
         case (subsampleWeight, subsampleId) => {
-          Array.fill(roundWeight(subsampleWeight))((subsampleId, baggedPoint.datum))
+          Seq.fill(roundWeight(subsampleWeight))((subsampleId, baggedPoint.datum))
         }
       }
     }

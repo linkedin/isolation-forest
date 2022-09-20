@@ -1,7 +1,9 @@
 package com.linkedin.relevance.isolationforest
 
 import com.linkedin.relevance.isolationforest.TestUtils._
+
 import java.io.File
+
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.scalactic.Tolerance._
@@ -150,9 +152,9 @@ class IsolationForestTest {
     val scores = isolationForestModel.transform(data).as[ScoringResult]
     val predictedLabels = scores.map(x => x.predictedLabel).collect
     val expectedLabels = Array.fill[Double](predictedLabels.length)(0.0)
+
     Assert.assertEquals(
-      predictedLabels.deep,
-      expectedLabels.deep,
+      predictedLabels.toSeq, expectedLabels.toSeq,
       "expected all predicted labels to be 0.0")
 
     spark.stop()
