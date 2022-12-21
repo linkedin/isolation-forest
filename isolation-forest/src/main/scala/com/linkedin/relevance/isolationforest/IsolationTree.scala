@@ -105,7 +105,7 @@ private[isolationforest] case object IsolationTree extends Logging {
         */
       def getFeatureToSplit(data: Array[DataPoint]): (Int, Double) = {
 
-        val availableFeatures = featureIndices.to[ListBuffer]
+        val availableFeatures = ListBuffer.empty[Int] ++ featureIndices 
         var foundFeature = false
         var featureIndex = -1
         var featureSplitValue = 0.0

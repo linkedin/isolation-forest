@@ -175,7 +175,7 @@ class BaggedPointTest {
 
     val expectedSumArray = expectedResult.map(x => x._1 + x._2.features.sum).sorted
     val actualSumArray = flattenedBaggedPointArray.map(x => x._1 + x._2.features.sum).sorted
-    Assert.assertTrue(expectedSumArray.deep == actualSumArray.deep)
+    Assert.assertEquals(expectedSumArray.toSeq, actualSumArray.toSeq) 
   }
 
   @Test(description = "flattenBaggedRDDNonIntegerWeightTest")

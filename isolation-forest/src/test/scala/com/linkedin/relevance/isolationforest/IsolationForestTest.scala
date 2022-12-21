@@ -150,9 +150,10 @@ class IsolationForestTest {
     val scores = isolationForestModel.transform(data).as[ScoringResult]
     val predictedLabels = scores.map(x => x.predictedLabel).collect
     val expectedLabels = Array.fill[Double](predictedLabels.length)(0.0)
+
     Assert.assertEquals(
-      predictedLabels.deep,
-      expectedLabels.deep,
+      predictedLabels.toSeq,
+      expectedLabels.toSeq,
       "expected all predicted labels to be 0.0")
 
     spark.stop()
