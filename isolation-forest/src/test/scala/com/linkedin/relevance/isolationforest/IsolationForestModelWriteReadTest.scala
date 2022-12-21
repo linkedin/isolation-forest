@@ -66,7 +66,7 @@ class IsolationForestModelWriteReadTest extends Logging {
     // Assert the predicted labels are equal
     val predictedLabels1 = scores1.map(x => x.predictedLabel).collect
     val predictedLabels2 = scores2.map(x => x.predictedLabel).collect
-    Assert.assertEquals(predictedLabels1.deep, predictedLabels2.deep)
+    Assert.assertEquals(predictedLabels1.toSeq, predictedLabels2.toSeq) 
 
     // Compare each tree in the original and saved/loaded model and assert they are equal
     isolationForestModel1.isolationTrees
@@ -131,8 +131,8 @@ class IsolationForestModelWriteReadTest extends Logging {
     val predictedLabels1 = scores1.map(x => x.predictedLabel).collect
     val predictedLabels2 = scores2.map(x => x.predictedLabel).collect
     val expectedLabels = Array.fill[Double](predictedLabels1.length)(0.0)
-    Assert.assertEquals(predictedLabels1.deep, predictedLabels2.deep)
-    Assert.assertEquals(predictedLabels2.deep, expectedLabels.deep)
+    Assert.assertEquals(predictedLabels1.toSeq, predictedLabels2.toSeq) 
+    Assert.assertEquals(predictedLabels2.toSeq, expectedLabels.toSeq) 
 
     // Compare each tree in the original and saved/loaded model and assert they are equal
     isolationForestModel1.isolationTrees
@@ -197,8 +197,8 @@ class IsolationForestModelWriteReadTest extends Logging {
     val scores2 = isolationForestModel2.transform(data).as[ScoringResult]
 
     Assert.assertEquals(
-      scores1.map(x => x.outlierScore).collect.deep,
-      scores2.map(x => x.outlierScore).collect.deep)
+      scores1.map(x => x.outlierScore).collect.toSeq,
+      scores2.map(x => x.outlierScore).collect.toSeq)
 
     spark.stop()
   }
