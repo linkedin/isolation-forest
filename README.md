@@ -3,12 +3,6 @@
 [![Release](https://img.shields.io/github/v/release/linkedin/isolation-forest)](https://github.com/linkedin/isolation-forest/releases/)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
 
-We have moved from Bintray to [Maven Central](https://repo.maven.apache.org/maven2/com/linkedin/isolation-forest/).
-
-As of version [2.0.0](https://github.com/linkedin/isolation-forest/releases/tag/v2.0.0), we are only publishing
-artifacts to Maven Central instead than Bintray. Bintray is
-[approaching its end of life](https://jfrog.com/blog/into-the-sunset-bintray-jcenter-gocenter-and-chartcenter/).
-
 ## Introduction
 
 This is a Scala/Spark implementation of the Isolation Forest unsupervised outlier detection
@@ -32,24 +26,18 @@ See [License](LICENSE) in the project root for license information.
 
 ### Building the library
 
-It is recommended to use Scala 2.11.8 and Spark 2.3.0. To build, run the following:
+To build using the default of Scala 2.11.8 and Spark 2.3.0, run the following:
 
 ```bash
 ./gradlew build
 ```
 This will produce a jar file in the `./isolation-forest/build/libs/` directory.
 
-If you want to use the library with Spark 2.4 (and the Scala 2.11.8 default), you can specify this when running the
+If you want to use the library with arbitrary Spark and Scala versions, you can specify this when running the
 build command.
 
 ```bash
-./gradlew build -PsparkVersion=2.4.3
-```
-
-You can also build an artifact with Spark 2.4 (or 3.0) and Scala 2.12.
-
-```bash
-./gradlew build -PsparkVersion=3.0.0 -PscalaVersion=2.12.11
+./gradlew build -PsparkVersion=3.2.0 -PscalaVersion=2.13.10
 ```
 
 To force a rebuild of the library, you can use:
@@ -73,61 +61,25 @@ repositories {
 }
 ```
 
-Add the isolation-forest dependency to the module-level `build.gradle` file. Here are some examples for multiple recent
-Spark/Scala version combinations.
+Add the isolation-forest dependency to the module-level `build.gradle` file. Here is an example for a recent
+spark scala version combination.
 
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.3.0_2.11:2.0.4'
-}
-```
-```
-dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.11:2.0.4'
-}
-```
-```
-dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_2.4.3_2.12:2.0.4'
-}
-```
-```
-dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_3.0.0_2.12:2.0.4'
+    compile 'com.linkedin.isolation-forest:isolation-forest_3.2.0_2.13:3.0.1'
 }
 ```
 
 #### Maven example
 
 If you are using the Maven Central repository, declare the isolation-forest dependency in your project's `pom.xml` file.
-Here are some examples for multiple recent Spark/Scala version combinations.
+Here is an example for a recent Spark/Scala version combination.
 
 ```
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
-  <artifactId>isolation-forest_2.3.0_2.11</artifactId>
-  <version>2.0.4</version>
-</dependency>
-```
-```
-<dependency>
-  <groupId>com.linkedin.isolation-forest</groupId>
-  <artifactId>isolation-forest_2.4.3_2.11</artifactId>
-  <version>2.0.4</version>
-</dependency>
-```
-```
-<dependency>
-  <groupId>com.linkedin.isolation-forest</groupId>
-  <artifactId>isolation-forest_2.4.3_2.12</artifactId>
-  <version>2.0.4</version>
-</dependency>
-```
-```
-<dependency>
-  <groupId>com.linkedin.isolation-forest</groupId>
-  <artifactId>isolation-forest_3.0.0_2.12</artifactId>
-  <version>2.0.4</version>
+  <artifactId>isolation-forest_3.2.0_2.13</artifactId>
+  <version>3.0.1</version>
 </dependency>
 ```
 
@@ -274,7 +226,7 @@ precision of the AUROC values reported in Liu et al.
 
 ## Contributions
 
-If you would like to contribute to this project, please review the instructions [here](CONTRIBUTING.md).
+If you would like to contribute to this project, please review the instructions [here](CONTRIBUTING.md). 
 
 ## References
 

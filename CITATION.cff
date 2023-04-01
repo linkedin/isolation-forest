@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Verbus"
+  given-names: "James"
+  orcid: "https://orcid.org/0000-0002-5812-022X"
+title: "isolation-forest"
+version: 3.1.0
+date-released: 2019-08-13
+url: "https://github.com/linkedin/isolation-forest"
