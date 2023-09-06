@@ -13,7 +13,7 @@ def sparkVersion = findProperty("sparkVersion") ?: "2.3.0"  // Spark 2.3.0 is th
 println "Spark version: " + sparkVersion
 
 dependencies {
-    compile("com.chuusai:shapeless_" + scalaVersionShort + ":2.3.2")
+    compile("com.chuusai:shapeless_" + scalaVersionShort + ":2.3.10")
     if(VersionNumber.parse(sparkVersion) >= VersionNumber.parse("2.4.0")) {
         compile("org.apache.spark:spark-avro_" + scalaVersionShort + ":" + sparkVersion)
     } else {
