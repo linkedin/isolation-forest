@@ -4,12 +4,12 @@ plugins {
     id 'scala'
 }
 
-def scalaVersion = findProperty("scalaVersion") ?: "2.11.8"  // Scala 2.11.8 is the default Scala build version.
+def scalaVersion = findProperty("scalaVersion") ?: "2.13.12"
 println "Scala version: " + scalaVersion
 // If scalaVersion == "2.11.8", then scalaVersionShort == "2.11".
 def scalaVersionShort = VersionNumber.parse(scalaVersion).getMajor() + "." + VersionNumber.parse(scalaVersion).getMinor()
 
-def sparkVersion = findProperty("sparkVersion") ?: "2.3.0"  // Spark 2.3.0 is the default Spark build version.
+def sparkVersion = findProperty("sparkVersion") ?: "3.4.1"
 println "Spark version: " + sparkVersion
 
 dependencies {
