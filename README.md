@@ -37,7 +37,7 @@ If you want to use the library with arbitrary Spark and Scala versions, you can 
 build command.
 
 ```bash
-./gradlew build -PsparkVersion=3.4.1 -PscalaVersion=2.13.11
+./gradlew build -PsparkVersion=3.4.1 -PscalaVersion=2.13.12
 ```
 
 To force a rebuild of the library, you can use:

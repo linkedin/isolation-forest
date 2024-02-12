@@ -87,7 +87,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
       val dataPath = new Path(path, "data").toString
       logInfo(s"Loading IsolationForestModel tree data from path ${dataPath}")
       val nodeData = spark.read
-        .format("com.databricks.spark.avro")
+        .format("avro")
         .load(dataPath)
         .as[EnsembleNodeData]
       val rootNodesRDD = nodeData.rdd
@@ -260,7 +260,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
       spark.createDataFrame(nodeDataRDD)
         .repartition(1)
         .write
-        .format("com.databricks.spark.avro")
+        .format("avro")
         .save(dataPath)
     }
 
