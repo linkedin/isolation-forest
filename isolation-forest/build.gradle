@@ -4,27 +4,23 @@ plugins {
     id 'scala'
 }
 
-def scalaVersion = findProperty("scalaVersion") ?: "2.13.12"
+def scalaVersion = findProperty("scalaVersion") ?: "2.13.14"
 println "Scala version: " + scalaVersion
-// If scalaVersion == "2.11.8", then scalaVersionShort == "2.11".
+// If scalaVersion == "X.Y.Z", then scalaVersionShort == "X.Y".
 def scalaVersionShort = VersionNumber.parse(scalaVersion).getMajor() + "." + VersionNumber.parse(scalaVersion).getMinor()
 
-def sparkVersion = findProperty("sparkVersion") ?: "3.4.1"
+def sparkVersion = findProperty("sparkVersion") ?: "3.5.1"
 println "Spark version: " + sparkVersion
 
 dependencies {
-    compile("com.chuusai:shapeless_" + scalaVersionShort + ":2.3.10")
-    if(VersionNumber.parse(sparkVersion) >= VersionNumber.parse("2.4.0")) {
-        compile("org.apache.spark:spark-avro_" + scalaVersionShort + ":" + sparkVersion)
-    } else {
-        compile("com.databricks:spark-avro_" + scalaVersionShort + ":4.0.0")
-    }
-    compile("org.apache.spark:spark-core_" + scalaVersionShort + ":" + sparkVersion)
-    compile("org.apache.spark:spark-mllib_" + scalaVersionShort + ":" + sparkVersion)
-    compile("org.apache.spark:spark-sql_" + scalaVersionShort + ":" + sparkVersion)
-    compile("org.scala-lang:scala-library:" + scalaVersion)
-    compile("org.scalatest:scalatest_" + scalaVersionShort + ":3.1.0")
-    compile("org.testng:testng:6.8.8")
+    implementation("com.chuusai:shapeless_" + scalaVersionShort + ":2.3.12")
+    implementation("org.apache.spark:spark-avro_" + scalaVersionShort + ":" + sparkVersion)
+    implementation("org.apache.spark:spark-core_" + scalaVersionShort + ":" + sparkVersion)
+    implementation("org.apache.spark:spark-mllib_" + scalaVersionShort + ":" + sparkVersion)
+    implementation("org.apache.spark:spark-sql_" + scalaVersionShort + ":" + sparkVersion)
+    implementation("org.scala-lang:scala-library:" + scalaVersion)
+    testImplementation("org.scalatest:scalatest_" + scalaVersionShort + ":3.2.18")
+    testImplementation("org.testng:testng:7.5.1")
 }
 
 test {
