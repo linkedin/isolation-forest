@@ -21,8 +21,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - scala-version: 2.11.12
-            spark-version: 2.4.3
           - scala-version: 2.12.18
             spark-version: 2.4.3
           - scala-version: 2.12.18
