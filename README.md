@@ -26,7 +26,7 @@ See [License](LICENSE) in the project root for license information.
 
 ### Building the library
 
-To build using the default of Scala 2.11.8 and Spark 2.3.0, run the following:
+To build using the default of Scala 2.13.14 and Spark 3.5.1, run the following:
 
 ```bash
 ./gradlew build
@@ -37,7 +37,7 @@ If you want to use the library with arbitrary Spark and Scala versions, you can 
 build command.
 
 ```bash
-./gradlew build -PsparkVersion=3.4.1 -PscalaVersion=2.13.12
+./gradlew build -PsparkVersion=3.5.1 -PscalaVersion=2.13.14
 ```
 
 To force a rebuild of the library, you can use:
@@ -66,7 +66,7 @@ spark scala version combination.
 
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_3.2.0_2.13:3.0.1'
+    compile 'com.linkedin.isolation-forest:isolation-forest_3.5.1_2.13:3.1.0'
 }
 ```
 
@@ -78,8 +78,8 @@ Here is an example for a recent Spark/Scala version combination.
 ```
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
-  <artifactId>isolation-forest_3.2.0_2.13</artifactId>
-  <version>3.0.1</version>
+  <artifactId>isolation-forest_3.5.1_2.13</artifactId>
+  <version>3.1.0</version>
 </dependency>
 ```
 
