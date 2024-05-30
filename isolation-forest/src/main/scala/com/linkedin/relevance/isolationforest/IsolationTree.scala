@@ -47,7 +47,7 @@ private[isolationforest] case object IsolationTree extends Logging {
   def fit(data: Array[DataPoint], randomSeed: Long, featureIndices: Array[Int]): IsolationTree = {
 
     logInfo(s"Fitting isolation tree with random seed ${randomSeed} on" +
-    s" ${featureIndices.seq.toString} features (indices) using ${data.length} data points.")
+    s" ${featureIndices.toIndexedSeq.toString} features (indices) using ${data.length} data points.")
 
     def log2(x: Double): Double = math.log10(x) / math.log10(2.0)
     val heightLimit = math.ceil(log2(data.length.toDouble)).toInt
@@ -124,7 +124,7 @@ private[isolationforest] case object IsolationTree extends Logging {
           if (minFeatureValue != maxFeatureValue) {
             foundFeature = true
             featureIndex = featureIndexTrial
-            featureSplitValue = ((maxFeatureValue - minFeatureValue) * randomState.nextDouble
+            featureSplitValue = ((maxFeatureValue - minFeatureValue) * randomState.nextDouble()
               + minFeatureValue)
           }
         }

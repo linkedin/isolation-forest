@@ -28,7 +28,7 @@ object TestUtils {
     }
 
     // local context with 4 threads
-    SparkSession.builder
+    SparkSession.builder()
       .master("local[4]")
       .appName("testing-spark")
       .config(sparkConf)
