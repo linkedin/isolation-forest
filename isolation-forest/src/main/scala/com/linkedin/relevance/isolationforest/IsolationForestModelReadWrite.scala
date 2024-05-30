@@ -254,7 +254,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
 
       saveMetadata(instance, path, spark, Some(extraMetadata))
       val dataPath = new Path(path, "data").toString
-      val nodeDataRDD = spark.sparkContext.parallelize(instance.isolationTrees.zipWithIndex)
+      val nodeDataRDD = spark.sparkContext.parallelize(instance.isolationTrees.zipWithIndex.toIndexedSeq)
         .flatMap { case (tree, treeID) => EnsembleNodeData.build(tree, treeID) }
       logInfo(s"Saving IsolationForestModel tree data to path ${dataPath}")
       spark.createDataFrame(nodeDataRDD)
@@ -299,7 +299,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
 
       val uid = instance.uid
       val cls = instance.getClass.getName
-      val params = instance.extractParamMap.toSeq
+      val params = instance.extractParamMap().toSeq
       val jsonParams = render(params.map { case ParamPair(p, v) =>
         p.name -> parse(p.jsonEncode(v))
       }.toList)

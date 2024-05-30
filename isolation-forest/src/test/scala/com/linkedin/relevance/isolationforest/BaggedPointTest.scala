@@ -45,7 +45,7 @@ class BaggedPointTest {
     numCols: Int,
     expectedMean: Double,
     expectedStddev: Double,
-    epsilon: Double) {
+    epsilon: Double): Unit = {
 
     val values = new mutable.ArrayBuffer[Double]()
     data.foreach { row =>
@@ -63,7 +63,7 @@ class BaggedPointTest {
     val spark = getSparkSession
 
     val dataPointArray = generateDataPoints(1, 1000)
-    val rdd = spark.sparkContext.parallelize(dataPointArray)
+    val rdd = spark.sparkContext.parallelize(dataPointArray.toIndexedSeq)
     val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, 1.0, 1, false, 42)
     baggedRDD.collect().foreach { baggedPoint =>
       assert(baggedPoint.subsampleWeights.size == 1 && baggedPoint.subsampleWeights(0) == 1)
@@ -80,7 +80,7 @@ class BaggedPointTest {
 
     val seeds = Array(123, 5354, 230, 349867, 23987)
     val arr = generateDataPoints(1, 1000)
-    val rdd = spark.sparkContext.parallelize(arr)
+    val rdd = spark.sparkContext.parallelize(arr.toIndexedSeq)
     seeds.foreach { seed =>
       val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, 1.0, numSubsamples, true, seed)
       val subsampleCounts: Array[Array[Double]] = baggedRDD
@@ -101,7 +101,7 @@ class BaggedPointTest {
 
     val seeds = Array(123, 5354, 230, 349867, 23987)
     val arr = generateDataPoints(1, 1000)
-    val rdd = spark.sparkContext.parallelize(arr)
+    val rdd = spark.sparkContext.parallelize(arr.toIndexedSeq)
     seeds.foreach { seed =>
       val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, subsample, numSubsamples, true, seed)
       val subsampleCounts: Array[Array[Double]] = baggedRDD
@@ -121,7 +121,7 @@ class BaggedPointTest {
 
     val seeds = Array(123, 5354, 230, 349867, 23987)
     val arr = generateDataPoints(1, 1000)
-    val rdd = spark.sparkContext.parallelize(arr)
+    val rdd = spark.sparkContext.parallelize(arr.toIndexedSeq)
     seeds.foreach { seed =>
       val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, 1.0, numSubsamples, false, seed)
       val subsampleCounts: Array[Array[Double]] = baggedRDD
@@ -142,7 +142,7 @@ class BaggedPointTest {
 
     val seeds = Array(123, 5354, 230, 349867, 23987)
     val arr = generateDataPoints(1, 1000)
-    val rdd = spark.sparkContext.parallelize(arr)
+    val rdd = spark.sparkContext.parallelize(arr.toIndexedSeq)
     seeds.foreach { seed =>
       val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, subsample, numSubsamples, false, seed)
       val subsampleCounts: Array[Array[Double]] = baggedRDD
@@ -168,7 +168,7 @@ class BaggedPointTest {
                                (1, dataPointArray(1)),
                                (1, dataPointArray(1)))
 
-    val dataPointRDD = spark.sparkContext.parallelize(dataPointArray)
+    val dataPointRDD = spark.sparkContext.parallelize(dataPointArray.toIndexedSeq)
     val baggedPointRDD = dataPointRDD.map(x => new BaggedPoint(x, subsampleWeights))
     val flattenedBaggedPointRDD = BaggedPoint.flattenBaggedRDD(baggedPointRDD, 1L)
     val flattenedBaggedPointArray = flattenedBaggedPointRDD.collect()
@@ -187,7 +187,7 @@ class BaggedPointTest {
     val dataPointArray = generateDataPoints(10, numRecords)
     val subsampleWeights = Array(1.3, 1.75)
 
-    val dataPointRDD = spark.sparkContext.parallelize(dataPointArray)
+    val dataPointRDD = spark.sparkContext.parallelize(dataPointArray.toIndexedSeq)
     val baggedPointRDD = dataPointRDD.map(x => new BaggedPoint(x, subsampleWeights))
     val flattenedBaggedPointRDD = BaggedPoint.flattenBaggedRDD(baggedPointRDD, 1L)
     val flattenedBaggedPointArray = flattenedBaggedPointRDD.collect()

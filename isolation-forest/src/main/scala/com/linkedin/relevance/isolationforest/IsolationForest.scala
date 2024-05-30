@@ -46,7 +46,7 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
 
     // Validate $(maxFeatures) and $(maxSamples) against input dataset and determine the values
     // actually used to train the model: numFeatures and numSamples
-    val totalNumFeatures = dataset.head.features.length
+    val totalNumFeatures = dataset.head().features.length
     val numFeatures = if ($(maxFeatures) > 1.0) {
       math.floor($(maxFeatures)).toInt
     } else {
@@ -94,7 +94,7 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
       .partitionBy(new HashPartitioner($(numEstimators)))
     val repartitionedFlattenedSampledDataset = repartitionedFlattenedSampledRdd
       .mapPartitions(x => x.map(y => y._2), preservesPartitioning = true)
-      .toDS
+      .toDS()
     logInfo(s"Training ${$(numEstimators)} isolation trees using" +
       s" ${repartitionedFlattenedSampledDataset.rdd.getNumPartitions} partitions.")
 
@@ -106,7 +106,7 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
       // Use a different seed for each partition to ensure each partition has an independent set of
       // random numbers. This ensures each tree is truly trained independently and doing so has a
       // measurable effect on the results.
-      val seed = $(randomSeed) + TaskContext.get.partitionId() + 2
+      val seed = $(randomSeed) + TaskContext.get().partitionId() + 2
       val rnd = new scala.util.Random(seed)
 
       val dataForTree = rnd.shuffle(x.toSeq).slice(0, numSamples).toArray
@@ -124,7 +124,7 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
       // random numbers. This ensures each tree is truly trained independently and doing so has a
       // measurable effect on the results.
       Iterator(IsolationTree
-        .fit(dataForTree, $(randomSeed) + $(numEstimators) + TaskContext.get.partitionId() + 2, featureIndices))
+        .fit(dataForTree, $(randomSeed) + $(numEstimators) + TaskContext.get().partitionId() + 2, featureIndices))
     }).collect()
 
     val isolationForestModel = copyValues(

@@ -32,13 +32,13 @@ class IsolationForestTest {
       .setContaminationError(contamination * 0.01)
       .setRandomSeed(1)
 
-    isolationForest1.write.overwrite.save(savePath)
+    isolationForest1.write.overwrite().save(savePath)
     val isolationForest2 = IsolationForest.load(savePath)
     deleteDirectory(new File(savePath))
 
     Assert.assertEquals(
-      isolationForest1.extractParamMap.toString,
-      isolationForest2.extractParamMap.toString)
+      isolationForest1.extractParamMap().toString,
+      isolationForest2.extractParamMap().toString)
 
     spark.stop()
   }
@@ -148,7 +148,7 @@ class IsolationForestTest {
 
     // Calculate area under ROC curve and assert
     val scores = isolationForestModel.transform(data).as[ScoringResult]
-    val predictedLabels = scores.map(x => x.predictedLabel).collect
+    val predictedLabels = scores.map(x => x.predictedLabel).collect()
     val expectedLabels = Array.fill[Double](predictedLabels.length)(0.0)
 
     Assert.assertEquals(
@@ -195,10 +195,10 @@ class IsolationForestTest {
 
     val labeledOutlierScoresMean = labeledOutlierScores
       .map(_.outlierScore)
-      .reduce(_+_) / labeledOutlierScores.count
+      .reduce(_+_) / labeledOutlierScores.count()
     val labeledInlierScoresMean = labeledInlierScores
       .map(_.outlierScore)
-      .reduce(_+_) / labeledInlierScores.count
+      .reduce(_+_) / labeledInlierScores.count()
 
     val uncert = 0.02
     val expectedOutlierScoreMean = 0.61

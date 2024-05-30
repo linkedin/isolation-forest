@@ -38,14 +38,14 @@ class IsolationForestModelWriteReadTest extends Logging {
 
     // Write the trained model to disk and then read it back from disk
     val savePath = System.getProperty("java.io.tmpdir") + "/savedIsolationForestModel"
-    isolationForestModel1.write.overwrite.save(savePath)
+    isolationForestModel1.write.overwrite().save(savePath)
     val isolationForestModel2 = IsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
 
     // Assert that all parameter values are equal
     Assert.assertEquals(
-      isolationForestModel1.extractParamMap.toString,
-      isolationForestModel2.extractParamMap.toString)
+      isolationForestModel1.extractParamMap().toString,
+      isolationForestModel2.extractParamMap().toString)
     Assert.assertEquals(isolationForestModel1.getNumSamples, isolationForestModel2.getNumSamples)
     Assert.assertEquals(isolationForestModel1.getNumFeatures, isolationForestModel2.getNumFeatures)
     Assert.assertEquals(
@@ -64,8 +64,8 @@ class IsolationForestModelWriteReadTest extends Logging {
     Assert.assertEquals(auroc1, auroc2)
 
     // Assert the predicted labels are equal
-    val predictedLabels1 = scores1.map(x => x.predictedLabel).collect
-    val predictedLabels2 = scores2.map(x => x.predictedLabel).collect
+    val predictedLabels1 = scores1.map(x => x.predictedLabel).collect()
+    val predictedLabels2 = scores2.map(x => x.predictedLabel).collect()
     Assert.assertEquals(predictedLabels1.toSeq, predictedLabels2.toSeq) 
 
     // Compare each tree in the original and saved/loaded model and assert they are equal
@@ -102,14 +102,14 @@ class IsolationForestModelWriteReadTest extends Logging {
 
     // Write the trained model to disk and then read it back from disk
     val savePath = System.getProperty("java.io.tmpdir") + "/savedIsolationForestModelZeroContamination"
-    isolationForestModel1.write.overwrite.save(savePath)
+    isolationForestModel1.write.overwrite().save(savePath)
     val isolationForestModel2 = IsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
 
     // Assert that all parameter values are equal
     Assert.assertEquals(
-      isolationForestModel1.extractParamMap.toString,
-      isolationForestModel2.extractParamMap.toString)
+      isolationForestModel1.extractParamMap().toString,
+      isolationForestModel2.extractParamMap().toString)
     Assert.assertEquals(isolationForestModel1.getNumSamples, isolationForestModel2.getNumSamples)
     Assert.assertEquals(isolationForestModel1.getNumFeatures, isolationForestModel2.getNumFeatures)
     Assert.assertEquals(
@@ -128,8 +128,8 @@ class IsolationForestModelWriteReadTest extends Logging {
     Assert.assertEquals(auroc1, auroc2)
 
     // Assert the predicted labels are equal and always 0.0
-    val predictedLabels1 = scores1.map(x => x.predictedLabel).collect
-    val predictedLabels2 = scores2.map(x => x.predictedLabel).collect
+    val predictedLabels1 = scores1.map(x => x.predictedLabel).collect()
+    val predictedLabels2 = scores2.map(x => x.predictedLabel).collect()
     val expectedLabels = Array.fill[Double](predictedLabels1.length)(0.0)
     Assert.assertEquals(predictedLabels1.toSeq, predictedLabels2.toSeq) 
     Assert.assertEquals(predictedLabels2.toSeq, expectedLabels.toSeq) 
@@ -182,7 +182,7 @@ class IsolationForestModelWriteReadTest extends Logging {
 
     // Write the trained model to disk and then read it back from disk
     val savePath = System.getProperty("java.io.tmpdir") + "/savedIsolationForestModelIdenticalFeatures"
-    isolationForestModel1.write.overwrite.save(savePath)
+    isolationForestModel1.write.overwrite().save(savePath)
     val isolationForestModel2 = IsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
 
@@ -197,8 +197,8 @@ class IsolationForestModelWriteReadTest extends Logging {
     val scores2 = isolationForestModel2.transform(data).as[ScoringResult]
 
     Assert.assertEquals(
-      scores1.map(x => x.outlierScore).collect.toSeq,
-      scores2.map(x => x.outlierScore).collect.toSeq)
+      scores1.map(x => x.outlierScore).collect().toSeq,
+      scores2.map(x => x.outlierScore).collect().toSeq)
 
     spark.stop()
   }
@@ -214,14 +214,14 @@ class IsolationForestModelWriteReadTest extends Logging {
 
     // Write the trained model to disk and then read it back from disk
     val savePath = System.getProperty("java.io.tmpdir") + "/emptyIsolationForestModelWriteReadTest"
-    isolationForestModel1.write.overwrite.save(savePath)
+    isolationForestModel1.write.overwrite().save(savePath)
     val isolationForestModel2 = IsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
 
     // Assert that all parameter values are equal
     Assert.assertEquals(
-      isolationForestModel1.extractParamMap.toString,
-      isolationForestModel2.extractParamMap.toString)
+      isolationForestModel1.extractParamMap().toString,
+      isolationForestModel2.extractParamMap().toString)
     Assert.assertEquals(isolationForestModel1.getNumSamples, isolationForestModel2.getNumSamples)
     Assert.assertEquals(isolationForestModel1.getNumFeatures, isolationForestModel2.getNumFeatures)
     Assert.assertEquals(
