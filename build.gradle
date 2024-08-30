@@ -1,6 +1,5 @@
 buildscript {
     repositories {
-        jcenter()
         maven {
             url "https://plugins.gradle.org/m2/"
         }
@@ -24,11 +23,6 @@ allprojects {
     group = "com.linkedin.isolation-forest"
 
     repositories {
-        jcenter()
         mavenCentral()
     }
-}
-
-task clean(type: Delete) {
-    delete "build"
 }
