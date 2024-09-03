@@ -31,11 +31,9 @@ tasks.named("githubRelease") {
 apply plugin: "io.github.gradle-nexus.publish-plugin"  // https://github.com/gradle-nexus/publish-plugin/
 nexusPublishing {
     repositories {
-        if (System.getenv("SONATYPE_TOKEN_PWD")) {
-            sonatype {
-                username = System.getenv("SONATYPE_TOKEN_USER")
-                password = System.getenv("SONATYPE_TOKEN_PWD")
-            }
+        sonatype {
+            username = System.getenv("SONATYPE_TOKEN_USER")
+            password = System.getenv("SONATYPE_TOKEN_PWD")
         }
     }
 
