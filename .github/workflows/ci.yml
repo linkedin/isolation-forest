@@ -57,14 +57,14 @@ jobs:
         env:
           SCALA_VERSION: ${{ matrix.scala-version }}
           SPARK_VERSION: ${{ matrix.spark-version }}
-        run: ./gradlew build publishToMavenLocal -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
+        run: ./gradlew :isolation-forest-onnx:build :isolation-forest-onnx:publishToMavenLocal -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
       - name: Release to Maven Central
         # Release job, only for pushes to the main development branch
         if: github.event_name == 'push'
           && github.ref == 'refs/heads/master'
           && github.repository == 'linkedin/isolation-forest'
           && !contains(toJSON(github.event.commits.*.message), '[skip release]')
-        run: ./gradlew publishToSonatype closeAndReleaseStagingRepository -i -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
+        run: ./gradlew :isolation-forest-onnx:publishToSonatype :isolation-forest-onnx:closeAndReleaseStagingRepository -i -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
         env:
           SCALA_VERSION: ${{ matrix.scala-version }}
           SPARK_VERSION: ${{ matrix.spark-version }}
