@@ -1,0 +1,124 @@
+plugins {
+    id 'base'
+}
+
+def venvDir = file('venv')  // Directory for the virtual environment
+
+task createVersionFile {
+    description = 'Create version.txt file for package version used in setup.py'
+    doLast {
+        def versionFile = file("${projectDir}/version.txt")
+        versionFile.parentFile.mkdirs()
+        versionFile.text = project.version
+    }
+}
+
+task createVenv(type: Exec) {
+    description = 'Create a Python virtual environment'
+    commandLine 'python3', '-m', 'venv', venvDir
+}
+
+task installDependencies(type: Exec) {
+    description = 'Install Python dependencies into the virtual environment'
+    dependsOn createVenv
+    commandLine "${venvDir}/bin/pip", 'install', '-r', 'requirements-dev.txt'
+}
+
+task buildPythonPackage(type: Exec) {
+    description = 'Build the Python source distribution and wheel'
+    dependsOn installDependencies, createVersionFile
+    commandLine "${venvDir}/bin/python", 'setup.py', 'sdist', 'bdist_wheel'
+}
+
+// Task to publish the Python package to PyPI
+task publishPythonPackage(type: Exec) {
+    description = 'Upload the Python package to PyPI'
+    group = 'upload'
+
+    dependsOn buildPythonPackage
+    environment 'TWINE_USERNAME', '__token__'
+    environment 'TWINE_PASSWORD', System.getenv('PYPI_TOKEN')
+    commandLine "${venvDir}/bin/twine", 'upload', 'dist/*'
+}
+
+task publishPythonPackageToTestPyPI(type: Exec) {
+    description = 'Upload the Python package to Test PyPI'
+    group = 'upload'
+
+    dependsOn buildPythonPackage
+    environment 'TWINE_USERNAME', '__token__'
+    environment 'TWINE_PASSWORD', System.getenv('TEST_PYPI_TOKEN')
+    commandLine "${venvDir}/bin/twine", 'upload', '--repository-url', 'https://test.pypi.org/legacy/', 'dist/*'
+}
+
+task test(type: Exec) {
+    description = 'Run Python tests using pytest'
+    group = 'verification'
+
+    dependsOn installDependencies
+    environment 'PYTHONPATH', "${projectDir}/src"
+    commandLine "${venvDir}/bin/python", '-m', 'pytest', 'test', '--junitxml=build/reports/tests/TEST-pytest.xml'
+    inputs.dir file("src")
+    inputs.dir file("test")
+    outputs.dir file("build/reports/tests")
+}
+
+task runCoverage(type: Exec) {
+    description = 'Run tests with coverage'
+    group = 'verification'
+
+    dependsOn installDependencies
+    environment 'PYTHONPATH', "${projectDir}/src"
+
+    // Define the coverage report directory
+    def coverageReportDir = file("${buildDir}/reports/coverage")
+    def coverageFile = file("${coverageReportDir}/.coverage")
+    def coverageReportFile = file("${coverageReportDir}/coverage_report.txt")
+
+    // Create the directory if it doesn't exist
+    doFirst {
+        if (!coverageReportDir.exists()) {
+            coverageReportDir.mkdirs()
+        }
+    }
+
+    commandLine 'bash', '-c', ". ${venvDir}/bin/activate && coverage run --data-file=${coverageFile} -m pytest"
+    doLast {
+        // Generate the coverage report and output it to the specified file
+        exec {
+            commandLine 'bash', '-c', ". ${venvDir}/bin/activate && coverage report --data-file=${coverageFile} > ${coverageReportFile}"
+        }
+        // Generate HTML coverage report
+        exec {
+            commandLine 'bash', '-c', ". ${venvDir}/bin/activate && coverage html -d ${coverageReportDir}/html_report --data-file=${coverageFile}"
+        }
+    }
+}
+
+task runFlake8(type: Exec) {
+    description = 'Run flake8 linting'
+    group = 'verification'
+
+    dependsOn installDependencies
+    commandLine 'bash', '-c', ". ${venvDir}/bin/activate && flake8"
+}
+
+task runMypy(type: Exec) {
+    description = 'Run mypy type checks'
+    group = 'verification'
+
+    dependsOn installDependencies
+    commandLine 'bash', '-c', ". ${venvDir}/bin/activate && mypy src"
+    inputs.dir file("src")
+    outputs.dir file("build/reports/mypy")
+}
+
+clean {
+    delete 'venv'  // Virtual environment for Python
+    delete 'dist'  // Python distribution directory
+    delete 'version.txt'  // Version file used for setup.py
+}
+
+// Define task dependencies
+check.dependsOn test, runFlake8, runCoverage, runMypy
+build.dependsOn buildPythonPackage

@@ -1,10 +1,60 @@
-.gradle
+# Gradle and Build directories
+.gradle/
 build/
+
+# macOS system files
 .DS_Store
-.idea
-spark-warehouse
+
+# IDE configurations
+.idea/
 *.ipr
 *.iml
 *.iws
+.vscode/
+.sublime-*
 
+# Python artifacts and caches
+*.egg
+*.egg-info/
+*.pyc
+*.pyo
+__pycache__/
+.cache/
+.tox*
+.venv*
+.env
+.envrc
+.direnv/
+.mypy_cache/
+pinned.txt
+/*/*pinned.txt
+
+# Test-related files
+.coverage
+TEST-*.xml
+coverage.xml
+/htmlcov/
+
+# Python build artifacts
+dist/
+/build/
+/*/dist/
+/*/build/
+/MANIFEST
+/*/MANIFEST
+/*/activate
+
+# Configuration files
+product-spec.json
+/*/product-spec.json
+config/
+/config/external/
+/*/config
+
+# Miscellaneous project files
+spark-warehouse
+version.txt
+
+# Project-specific paths
 isolation-forest/bin
+isolation-forest-onnx/venv

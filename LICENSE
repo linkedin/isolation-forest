@@ -44,8 +44,8 @@ Outlier Detection Datasets (ODDS)
 This project includes datasets from the Outlier Detection Datasets (ODDS)
 repository (http://odds.cs.stonybrook.edu/).
 
-- Dataset at isolation-forest/src/test/resources/mammography.csv
-- Dataset at isolation-forest/src/test/resources/shuttle.csv
+- Dataset at isolation-forest/src/test/resources/mammography.csv and isolation-forest-onnx/test/resources/mammography.csv
+- Dataset at isolation-forest/src/test/resources/shuttle.csv and isolation-forest-onnx/test/resources/shuttle.csv
 
 Your use of these datasets is subject to the citation requirements
 outlined here: http://odds.cs.stonybrook.edu/about-odds/

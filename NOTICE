@@ -30,22 +30,22 @@ terms than as set forth above. In addition, such third party code may also
 depend on and load multiple tiers of dependencies.
 
 ========================================================================
-Dataset at isolation-forest/src/test/resources/mammography.csv
+Dataset at isolation-forest/src/test/resources/mammography.csv and isolation-forest-onnx/test/resources/mammography.csv
 ========================================================================
 Shebuti Rayana (2016). ODDS Library [http://odds.cs.stonybrook.edu].
 Stony Brook, NY: Stony Brook University, Department of Computer Science.
-Dataset from http://odds.cs.stonybrook.edu/mammography-dataset/
+Dataset from https://odds.cs.stonybrook.edu/mammography-dataset/
 
 The original Mammography (Woods et al., 1993) data set was made available by the courtesy of
 Aleksandar Lazarevic. This dataset is publicly available in openML (https://www.openml.org/d/310)
 under Public Domain Mark 1.0.
 
 ========================================================================
-Dataset at isolation-forest/src/test/resources/shuttle.csv
+Dataset at isolation-forest/src/test/resources/shuttle.csv and isolation-forest-onnx/test/resources/shuttle.csv
 ========================================================================
 Shebuti Rayana (2016). ODDS Library [http://odds.cs.stonybrook.edu].
 Stony Brook, NY: Stony Brook University, Department of Computer Science.
-Dataset from http://odds.cs.stonybrook.edu/shuttle-dataset/
+Dataset from https://odds.cs.stonybrook.edu/shuttle-dataset/
 
 Dua, D. and Graff, C. (2019). UCI Machine Learning Repository [http://archive.ics.uci.edu/ml].
 Irvine, CA: University of California, School of Information and Computer Science.
