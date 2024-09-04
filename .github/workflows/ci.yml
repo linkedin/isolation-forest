@@ -73,9 +73,31 @@ jobs:
           PGP_KEY: ${{ secrets.PGP_KEY }}
           PGP_PWD: ${{ secrets.PGP_PWD }}
 
-  github-release:
+  pypi-publish:
     runs-on: ubuntu-latest
     needs: build
+    # Release job, only for pushes to the main development branch
+    if: github.event_name == 'push'
+      && github.ref == 'refs/heads/master'
+      && github.repository == 'linkedin/isolation-forest'
+      && !contains(toJSON(github.event.commits.*.message), '[skip release]')
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2  # https://github.com/actions/checkout
+        with:
+          fetch-depth: '0'
+      - name: Setup Python
+        uses: actions/setup-python@v5  # https://github.com/actions/setup-python
+        with:
+          python-version: '3.9'
+      - name: Publish to PyPI
+        run: ./gradlew publishPythonPackageToTestPyPI
+        env:
+          TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
+
+  github-release:
+    runs-on: ubuntu-latest
+    needs: ['build', 'pypi-publish']
     # Release job, only for pushes to the main development branch
     if: github.event_name == 'push'
       && github.ref == 'refs/heads/master'
@@ -96,3 +118,4 @@ jobs:
         run: ./gradlew githubRelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

@@ -30,10 +30,9 @@ task buildPythonPackage(type: Exec) {
     commandLine "${venvDir}/bin/python", 'setup.py', 'sdist', 'bdist_wheel'
 }
 
-// Task to publish the Python package to PyPI
 task publishPythonPackage(type: Exec) {
     description = 'Upload the Python package to PyPI'
-    group = 'upload'
+    group = 'publishing'
 
     dependsOn buildPythonPackage
     environment 'TWINE_USERNAME', '__token__'
@@ -43,7 +42,7 @@ task publishPythonPackage(type: Exec) {
 
 task publishPythonPackageToTestPyPI(type: Exec) {
     description = 'Upload the Python package to Test PyPI'
-    group = 'upload'
+    group = 'publishing'
 
     dependsOn buildPythonPackage
     environment 'TWINE_USERNAME', '__token__'
