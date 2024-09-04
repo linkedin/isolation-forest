@@ -4,7 +4,7 @@ pytest==8.3.2
 coverage==7.6.1
 
 # Development utilities
-wheel==0.37.0
+wheel==0.38.1
 flake8==7.1.1
 mypy==1.11
 setuptools==74.0.0
