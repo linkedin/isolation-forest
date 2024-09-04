@@ -91,9 +91,9 @@ jobs:
         with:
           python-version: '3.9'
       - name: Publish to PyPI
-        run: ./gradlew publishPythonPackageToTestPyPI
+        run: ./gradlew publishPythonPackage
         env:
-          TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
 
   github-release:
     runs-on: ubuntu-latest
