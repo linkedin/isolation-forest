@@ -64,7 +64,7 @@ jobs:
           && github.ref == 'refs/heads/master'
           && github.repository == 'linkedin/isolation-forest'
           && !contains(toJSON(github.event.commits.*.message), '[skip release]')
-        run: ./gradlew :isolation-forest:publishToSonatype :isolation-forest:closeAndReleaseStagingRepository -i -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
+        run: ./gradlew :isolation-forest:publishToSonatype closeAndReleaseStagingRepository -i -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
         env:
           SCALA_VERSION: ${{ matrix.scala-version }}
           SPARK_VERSION: ${{ matrix.spark-version }}
