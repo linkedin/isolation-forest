@@ -9,10 +9,14 @@ This is a Scala/Spark implementation of the Isolation Forest unsupervised outlie
 algorithm. This library was created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from
 the LinkedIn Anti-Abuse AI team.
 
-This library supports distributed training and scoring using Spark data structures. It inherits from
-the `Estimator` and `Model` classes in [Spark's ML library](https://spark.apache.org/docs/2.3.0/ml-guide.html)
+The `isolation-forest` module supports distributed training and scoring in Scala using Spark data structures.
+It inherits from the `Estimator` and `Model` classes in [Spark's ML library](https://spark.apache.org/docs/2.3.0/ml-guide.html)
 in order to take advantage of machinery such as `Pipeline`s. Model persistence on HDFS is
 supported.
+
+The `isolation-forest-onnx` module provides Python-based converter to convert a trained model to ONNX format for broad
+portability across platforms and languages. [ONNX](https://onnx.ai/) is an open format built to represent machine
+learning models.
 
 ## Copyright
 
@@ -66,7 +70,7 @@ spark scala version combination.
 
 ```
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_3.5.1_2.13:3.1.0'
+    compile 'com.linkedin.isolation-forest:isolation-forest_3.5.1_2.13:3.2.3'
 }
 ```
 
@@ -79,7 +83,7 @@ Here is an example for a recent Spark/Scala version combination.
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
   <artifactId>isolation-forest_3.5.1_2.13</artifactId>
-  <version>3.1.0</version>
+  <version>3.2.3</version>
 </dependency>
 ```
 
@@ -195,6 +199,79 @@ isolationForestModel.write.overwrite.save(path)
   */
 
 val isolationForestModel2 = IsolationForestModel.load(path)
+```
+
+## ONNX model conversion and inference
+
+### Converting a trained model to ONNX
+
+The artifacts associated with the `isolation-forest-onnx` module are [available](https://pypi.org/project/isolation-forest-onnx/) in PyPI.
+
+The ONNX converter can be installed using `pip`. It is recommended to use the same version of the converter as the
+version of the `isolation-forest` library used to train the model.
+
+```bash
+pip install isolation-forest-onnx==3.2.3
+```
+
+You can then import and use the converter in Python.
+
+```python
+import os
+from isolationforestonnx.isolation_forest_converter import IsolationForestConverter
+
+# This is the same path used in the previous example showing how to save the model in Scala above.
+path = '/user/testuser/isolationForestWriteTest'
+
+# Get model data path
+data_dir_path = path + '/data'
+avro_model_file = os.listdir(data_dir_path)
+model_file_path = data_dir_path + '/' + avro_model_file[0]
+
+# Get model metadata file path
+metadata_dir_path =  path + '/metadata'
+metadata_file = os.listdir(path + '/metadata/')
+metadata_file_path = metadata_dir_path + '/' + metadata_file[0]
+
+# Convert the model to ONNX format (this will return the ONNX model in memory)
+converter = IsolationForestConverter(model_file_path, metadata_file_path)
+onnx_model = converter.convert()
+
+# Convert and save the model in ONNX format (this will save the ONNX model to disk)
+onnx_model_path = '/user/testuser/isolationForestWriteTest.onnx'
+converter.convert_and_save(onnx_model_path)
+```
+
+### Using the ONNX model for inference (example in Python)
+
+```python
+import numpy as np
+import onnx
+from onnxruntime import InferenceSession
+
+# `onnx_model_path` the same path used above in the convert and save operation
+onnx_model_path = '/user/testuser/isolationForestWriteTest.onnx'
+dataset_path = 'isolation-forest-onnx/test/resources/shuttle.csv'
+
+# Load data
+input_data = np.loadtxt(dataset_path, delimiter=',')
+num_features = input_data.shape[1] - 1
+last_col_index = num_features
+print(f'Number of features for {dataset_name}: {num_features}')
+
+# The last column is the label column
+input_dict = {'features': np.delete(input_data, last_col_index, 1).astype(dtype=np.float32)}
+actual_labels = input_data[:, last_col_index]
+
+# Load the ONNX model from local disk and do inference
+onx = onnx.load(onnx_model_path)
+sess = InferenceSession(onx.SerializeToString())
+res = sess.run(None, input_dict)
+
+# Print scores
+actual_outlier_scores = res[0]
+print('ONNX Converter outlier scores:')
+print(np.transpose(actual_outlier_scores[:num_examples_to_print])[0])
 ```
 
 ## Validation
