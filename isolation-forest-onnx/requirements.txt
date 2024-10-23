@@ -1,5 +1,5 @@
 avro-python3==1.9.1
 numpy==1.26.4
-onnx==1.16.0
+onnx==1.17.0
 onnxruntime==1.18.0
 protobuf==5.26.1
