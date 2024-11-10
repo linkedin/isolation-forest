@@ -1,3 +1,5 @@
+<img src="./assets/isolation_forest.svg" alt="Logo" width="30%"/>
+
 # isolation-forest
 [![Build Status](https://github.com/linkedin/isolation-forest/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/linkedin/isolation-forest/actions/workflows/ci.yml?query=branch%3Amaster+event%3Apush)
 [![Release](https://img.shields.io/github/v/release/linkedin/isolation-forest)](https://github.com/linkedin/isolation-forest/releases/)
@@ -10,7 +12,7 @@ algorithm. This library was created by [James Verbus](https://www.linkedin.com/i
 the LinkedIn Anti-Abuse AI team.
 
 The `isolation-forest` module supports distributed training and scoring in Scala using Spark data structures.
-It inherits from the `Estimator` and `Model` classes in [Spark's ML library](https://spark.apache.org/docs/2.3.0/ml-guide.html)
+It inherits from the `Estimator` and `Model` classes in [Spark's ML library](https://spark.apache.org/mllib/)
 in order to take advantage of machinery such as `Pipeline`s. Model persistence on HDFS is
 supported.
 
