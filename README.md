@@ -213,7 +213,7 @@ The ONNX converter can be installed using `pip`. It is recommended to use the sa
 version of the `isolation-forest` library used to train the model.
 
 ```bash
-pip install isolation-forest-onnx==3.2.3
+pip install isolation-forest-onnx==3.2.7
 ```
 
 You can then import and use the converter in Python.
