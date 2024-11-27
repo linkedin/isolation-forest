@@ -7,7 +7,7 @@ import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.ml.Estimator
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
 import org.apache.spark.sql.Dataset
 import org.apache.spark.{HashPartitioner, TaskContext}
 
@@ -200,7 +200,16 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
     require(schema($(featuresCol)).dataType == VectorType,
       s"Input column ${$(featuresCol)} is not of required type ${VectorType}")
 
-    val outputFields = schema.fields
+    val outputFields: Array[StructField] = schema.fields ++ Array(
+      StructField(
+        name = s"$predictionCol",
+        dataType = DoubleType
+      ),
+      StructField(
+        name = s"$scoreCol",
+        dataType = DoubleType
+      )
+    )
 
     StructType(outputFields)
   }
