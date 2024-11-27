@@ -187,8 +187,8 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
 
   /**
     * Validates the input schema and transforms it into the output schema. It validates that the
-    * input DataFrame has a $(featuresCol) of the correct type. In this case, the output schema is
-    * identical to the input schema.
+    * input DataFrame has a $(featuresCol) of the correct type. In this case, the output schema appends
+    * the output columns to the input schema.
     *
     * @param schema The schema of the DataFrame containing the data to be fit.
     * @return The schema of the DataFrame containing the data to be fit.
