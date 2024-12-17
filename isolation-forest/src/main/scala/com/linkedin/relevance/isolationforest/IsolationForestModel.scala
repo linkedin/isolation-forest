@@ -89,9 +89,9 @@ class IsolationForestModel(
 
   /**
     * Validates the input schema and transforms it into the output schema. It validates that the
-    * input DataFrame has a $(featuresCol) of the correct type.  It also ensures that the input
-    * DataFrame does not already have $(predictionCol) or $(scoreCol) columns, as they will be
-    * created during the fitting process.
+    * input DataFrame has a $(featuresCol) of the correct type and appends the output columns to
+    * the input schema. It also ensures that the input DataFrame does not already have
+    * $(predictionCol) or $(scoreCol) columns, as they will be created during the fitting process.
     *
     * @param schema The schema of the DataFrame containing the data to be fit.
     * @return The schema of the DataFrame containing the data to be fit, with the additional
