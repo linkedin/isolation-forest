@@ -7,7 +7,7 @@ import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.ml.Estimator
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
 import org.apache.spark.sql.Dataset
 import org.apache.spark.{HashPartitioner, TaskContext}
 
@@ -187,8 +187,8 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
 
   /**
     * Validates the input schema and transforms it into the output schema. It validates that the
-    * input DataFrame has a $(featuresCol) of the correct type. In this case, the output schema is
-    * identical to the input schema.
+    * input DataFrame has a $(featuresCol) of the correct type. In this case, the output schema appends
+    * the output columns to the input schema.
     *
     * @param schema The schema of the DataFrame containing the data to be fit.
     * @return The schema of the DataFrame containing the data to be fit.
@@ -200,7 +200,16 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
     require(schema($(featuresCol)).dataType == VectorType,
       s"Input column ${$(featuresCol)} is not of required type ${VectorType}")
 
-    val outputFields = schema.fields
+    val outputFields: Array[StructField] = schema.fields ++ Array(
+      StructField(
+        name = s"$predictionCol",
+        dataType = DoubleType
+      ),
+      StructField(
+        name = s"$scoreCol",
+        dataType = DoubleType
+      )
+    )
 
     StructType(outputFields)
   }
