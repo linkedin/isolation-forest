@@ -8,7 +8,7 @@ import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.ml.Estimator
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
-import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.{DataFrame, Dataset}
 import org.apache.spark.{HashPartitioner, TaskContext}
 
 
@@ -46,6 +46,46 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
 
     // Validate $(maxFeatures) and $(maxSamples) against input dataset and determine the values
     // actually used to train the model: numFeatures and numSamples
+    val resolvedParams = validateAndResolveParams(dataset)
+
+    // Bag and flatten the data, then repartition it so that each partition corresponds to one
+    // isolation tree.
+    val repartitionedFlattenedSampledDataset = createSampledPartitionedDataset(
+      dataset,
+      resolvedParams.numSamples,
+      resolvedParams.totalNumSamples)
+
+    // Train an isolation tree on each subset of data.
+    val isolationTrees = trainIsolationTrees(
+      repartitionedFlattenedSampledDataset,
+      resolvedParams.numSamples,
+      resolvedParams.numFeatures)
+
+    // Create the IsolationForestModel instance and set the parent.
+    val isolationForestModel = copyValues(
+      new IsolationForestModel(
+        uid,
+        isolationTrees,
+        resolvedParams.numSamples,
+        resolvedParams.numFeatures).setParent(this))
+
+    // Determine and set the model threshold based upon the specified contamination and
+    // contaminationError parameters.
+    computeAndSetModelThreshold(isolationForestModel, df)
+
+    isolationForestModel
+  }
+
+  /**
+   * Private helper to validate parameters and figure out how many features and samples we'll use.
+   *
+   * @param dataset The input dataset.
+   * @return A ResolvedParams instance containing the resolved values.
+   */
+  private def validateAndResolveParams(dataset: Dataset[DataPoint]): ResolvedParams = {
+
+    // Validate $(maxFeatures) and $(maxSamples) against input dataset and determine the values
+    // actually used to train the model: numFeatures and numSamples.
     val totalNumFeatures = dataset.head().features.length
     val numFeatures = if ($(maxFeatures) > 1.0) {
       math.floor($(maxFeatures)).toInt
@@ -74,6 +114,26 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
       s" ${$(maxSamples)} specifying the use of ${numSamples} samples, but only" +
       s" ${totalNumSamples} samples are in the input dataset.")
 
+    ResolvedParams(numFeatures, totalNumFeatures, numSamples, totalNumSamples)
+  }
+
+  /**
+   * Private helper that bags the data (with possible up-sampling), flattens it,
+   * repartitions by tree index, and returns the partitioned Dataset.
+   *
+   * @param dataset         The input data, in DataPoint form
+   * @param numSamples      Number of samples per tree
+   * @param totalNumSamples The total number of data points in `dataset`
+   * @return A Dataset[DataPoint] partitioned so that each partition corresponds
+   *         to one isolation tree
+   */
+  private def createSampledPartitionedDataset(
+    dataset: Dataset[DataPoint],
+    numSamples: Int,
+    totalNumSamples: Long): Dataset[DataPoint] = {
+
+    import dataset.sparkSession.implicits._
+
     // Sample and assign data into $(numEstimators) subsets. Repartition RDD to ensure that the data
     // for each tree is on its own partition; later steps preserve partitioning. We sample more than
     // needed to avoid having too few samples due to random chance. We are typically in the large n,
@@ -87,33 +147,67 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
     val sampleFraction = Math.min(targetNumSamples / totalNumSamples.toDouble, 1.0)
     logInfo(s"The subsample for each partition is sampled from input data using sampleFraction =" +
       s" ${sampleFraction}.")
-    val sampledRdd = BaggedPoint
-      .convertToBaggedRDD(dataset.rdd, sampleFraction, $(numEstimators), $(bootstrap), $(randomSeed))
+
+    // Bag and flatten
+    val sampledRdd = BaggedPoint.convertToBaggedRDD(
+      dataset.rdd,
+      sampleFraction,
+      $(numEstimators),
+      $(bootstrap),
+      $(randomSeed)
+    )
     val flattenedSampledRdd = BaggedPoint.flattenBaggedRDD(sampledRdd, $(randomSeed) + 1)
-    val repartitionedFlattenedSampledRdd = flattenedSampledRdd
-      .partitionBy(new HashPartitioner($(numEstimators)))
+
+    // Partition by tree index
+    val repartitionedFlattenedSampledRdd = flattenedSampledRdd.partitionBy(new HashPartitioner($(numEstimators)))
+
     val repartitionedFlattenedSampledDataset = repartitionedFlattenedSampledRdd
       .mapPartitions(x => x.map(y => y._2), preservesPartitioning = true)
       .toDS()
+
     logInfo(s"Training ${$(numEstimators)} isolation trees using" +
       s" ${repartitionedFlattenedSampledDataset.rdd.getNumPartitions} partitions.")
 
-    // Train an isolation tree on each subset of data. Data for each tree is randomly shuffled
-    // before slice to ensure no bias when we limit to numSamples. A unique random seed is used to
-    // build each tree.
+    repartitionedFlattenedSampledDataset
+  }
+
+  /**
+   * Private helper that trains an isolation tree on each partition of the given Dataset,
+   * where each partition corresponds to a single tree.
+   *
+   * Data for each tree is randomly shuffled before slice to ensure no bias when we limit
+   * to numSamples. A unique random seed is used to build each tree.
+   *
+   * @param dataset A partitioned Dataset[DataPoint], where each partition is dedicated to one tree.
+   * @param numSamples Number of samples to retain per partition/tree.
+   * @param numFeatures Number of features to use per tree.
+   * @return Array of trained IsolationTree instances.
+   */
+  private def trainIsolationTrees(
+    dataset: Dataset[DataPoint],
+    numSamples: Int,
+    numFeatures: Int): Array[IsolationTree] = {
+
+    // We need an encoder for IsolationTree in order to do the mapPartitions call.
     implicit val isolationTreeEncoder = org.apache.spark.sql.Encoders.kryo[IsolationTree]
-    val isolationTrees = repartitionedFlattenedSampledDataset.mapPartitions( x => {
+
+    // For each partition, train a single isolation tree
+    val isolationTrees = dataset.mapPartitions( x => {
+      val partitionId = TaskContext.get().partitionId()
+
       // Use a different seed for each partition to ensure each partition has an independent set of
       // random numbers. This ensures each tree is truly trained independently and doing so has a
       // measurable effect on the results.
-      val seed = $(randomSeed) + TaskContext.get().partitionId() + 2
+      val seed = $(randomSeed) + partitionId + 2
       val rnd = new scala.util.Random(seed)
 
+      // Shuffle, then slice to limit the data
       val dataForTree = rnd.shuffle(x.toSeq).slice(0, numSamples).toArray
       if (dataForTree.length != numSamples)
-        logWarning(s"Isolation tree with random seed ${seed} is trained using" +
-          s" ${dataForTree.length} data points instead of user specified ${numSamples}")
+        logWarning(s"Isolation tree with random seed ${seed} is trained using " +
+          s"${dataForTree.length} data points instead of user specified ${numSamples}")
 
+      // Randomly choose which features will be used
       val featureIndices = rnd.shuffle(0 to dataForTree.head.features.length - 1).toArray
         .take(numFeatures).sorted
       if (featureIndices.length != numFeatures)
@@ -124,14 +218,28 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
       // random numbers. This ensures each tree is truly trained independently and doing so has a
       // measurable effect on the results.
       Iterator(IsolationTree
-        .fit(dataForTree, $(randomSeed) + $(numEstimators) + TaskContext.get().partitionId() + 2, featureIndices))
+        .fit(dataForTree, $(randomSeed) + $(numEstimators) + partitionId + 2, featureIndices))
     }).collect()
 
-    val isolationForestModel = copyValues(
-      new IsolationForestModel(uid, isolationTrees, numSamples, numFeatures).setParent(this))
+    isolationTrees
+  }
 
-    // Determine and set the model threshold based upon the specified contamination and
-    // contaminationError parameters.
+  /**
+   * Private helper that computes and sets the model threshold based on the current
+   * contamination and contaminationError parameters. If contamination == 0.0, the
+   * threshold is not set (no outliers). Otherwise, it uses approxQuantile on the
+   * training data to match the desired contamination fraction, and logs a warning
+   * if the observed contamination differs more than expected.
+   *
+   * @param isolationForestModel The trained IsolationForestModel instance.
+   * @param df The training DataFrame originally used to fit the model.
+   */
+  private def computeAndSetModelThreshold(
+    isolationForestModel: IsolationForestModel,
+    df: DataFrame): Unit = {
+
+    import df.sparkSession.implicits._
+
     if ($(contamination) > 0.0) {
       // Score all training instances to determine the threshold required to achieve the desired
       // level of contamination. The approxQuantile method uses the algorithm in this paper:
@@ -141,7 +249,8 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
         .map(row => OutlierScore(row.getAs[Double]($(scoreCol))))
         .cache()
       val outlierScoreThreshold = scores
-        .stat.approxQuantile("score", Array(1 - $(contamination)), $(contaminationError))
+        .stat
+        .approxQuantile("score", Array(1 - $(contamination)), $(contaminationError))
         .head
       isolationForestModel.setOutlierScoreThreshold(outlierScoreThreshold)
 
@@ -159,17 +268,19 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
       val observedContamination = scores
         .map(outlierScore => if(outlierScore.score >= outlierScoreThreshold) 1.0 else 0.0)
         .reduce(_ + _) / scores.count()
-      val verificationError = if (${contaminationError} == 0.0) {
+
+      // Determine allowable verification range
+      val verificationError = if ($(contaminationError) == 0.0) {
         // If the threshold is calculated exactly, then assume a relative 1% error on the specified
         // contamination for the verification.
         $(contamination) * 0.01
       } else {
-        ${contaminationError}
+        $(contaminationError)
       }
-      if (math.abs(observedContamination - $(contamination)) > verificationError) {
 
+      if (math.abs(observedContamination - $(contamination)) > verificationError) {
         logWarning(s"Observed contamination is ${observedContamination}, which is outside" +
-          s" the expected range of ${${contamination}} +/- ${verificationError}. If this is" +
+          s" the expected range of ${$(contamination)} +/- ${verificationError}. If this is" +
           s" acceptable to you, then it is OK to proceed. If there is a very large discrepancy" +
           s" between observed and expected values, then please try retraining the model with an" +
           s" exact threshold calculation (set the contaminationError parameter value to 0.0).")
@@ -181,8 +292,6 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
         " labels will be false. The model and outlier scores are otherwise not affected by this" +
         " parameter choice.")
     }
-
-    isolationForestModel
   }
 
   /**
@@ -213,6 +322,12 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
 
     StructType(outputFields)
   }
+
+  private case class ResolvedParams(
+    numFeatures: Int,
+    totalNumFeatures: Int,
+    numSamples: Int,
+    totalNumSamples: Long)
 }
 
 /**
