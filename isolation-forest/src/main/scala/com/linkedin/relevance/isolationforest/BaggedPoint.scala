@@ -89,85 +89,92 @@ private[isolationforest] case object BaggedPoint {
     withReplacement: Boolean,
     seed: Long = Random.nextLong()): RDD[BaggedPoint[Datum]] = {
 
-    /**
-      * Convert an input dataset into its BaggedPoint representation, choosing subsamplingRate
-      * counts for each instance. This method is a helper for convertToBaggedRDD(). It accepts a
-      * randomState parameter of AbstractIntegerDistribution type. Sampling with (without)
-      * replacement can be achieved by using a PoissonDistribution (BinomialDistribution)
-      * randomState.
-      *
-      * @param input Input dataset.
-      * @param subsamplingRate Fraction of the training data used for learning decision tree.
-      * @param numSubsamples Number of subsamples of this RDD to take.
-      * @param seed Random seed.
-      * @param randomState AbstractIntegerDistribution instance used to draw random samples.
-      * @return BaggedPoint dataset representation.
-      */
-    def convertToBaggedRDDHelper[Datum](
-      input: RDD[Datum],
-      subsamplingRate: Double,
-      numSubsamples: Int,
-      seed: Long,
-      randomState: AbstractIntegerDistribution): RDD[BaggedPoint[Datum]] = {
-
-      input.mapPartitionsWithIndex { (partitionIndex, instances) =>
-        // Use random seed = seed + partitionIndex + 1 to make generation reproducible.
-        // Use a different seed for each partition to ensure each partition has an independent set
-        // of random numbers.
-        randomState.reseedRandomGenerator(seed + partitionIndex + 1)
-        instances.map {
-          instance => new BaggedPoint(instance, subsamplingRate, numSubsamples, randomState)
-        }
-      }
-    }
-
     if (withReplacement) {
-      val poisson = new PoissonDistribution(subsamplingRate)
-      convertToBaggedRDDHelper(input, subsamplingRate, numSubsamples, seed, poisson)
+      def poissonFactory(seed: Long): AbstractIntegerDistribution = {
+        val poisson = new PoissonDistribution(subsamplingRate)
+        poisson.reseedRandomGenerator(seed)
+        poisson
+      }
+      convertToBaggedRDDHelper(input, subsamplingRate, numSubsamples, seed, poissonFactory)
     } else {
       if (numSubsamples == 1 && subsamplingRate == 1.0) {
         input.map(datum => BaggedPoint(datum, Array(1)))  // Create bagged RDD without sampling
       } else {
-        val binomial = new BinomialDistribution(1, subsamplingRate)
-        convertToBaggedRDDHelper(input, subsamplingRate, numSubsamples, seed, binomial)
+        def binomialFactory(seed: Long): AbstractIntegerDistribution = {
+          val binomial = new BinomialDistribution(1, subsamplingRate)
+          binomial.reseedRandomGenerator(seed)
+          binomial
+        }
+        convertToBaggedRDDHelper(input, subsamplingRate, numSubsamples, seed, binomialFactory)
       }
     }
   }
 
   /**
-    * Flattens a baggedRDD to a pair RDD. The key is the subsampleIndex. The instances are
-    * duplicated in the flattened representation according to their specified subsampleWeight.
-    * (e.g. subsampleWeight == 0 then no instances, subsampleWeight == 1 then one instance,
-    * subsampleWeight == 2 then two instances, etc.)
-    *
-    * @param baggedRdd BaggedPoint dataset representation.
-    * @return Pair RDD that contains a flattened representation of the data.
-    */
+   * Convert an input dataset into its BaggedPoint representation, choosing subsamplingRate
+   * counts for each instance. This method is a helper for convertToBaggedRDD(). It accepts a
+   * randomState parameter of AbstractIntegerDistribution type. Sampling with (without)
+   * replacement can be achieved by using a PoissonDistribution (BinomialDistribution)
+   * randomState.
+   *
+   * @param input Input dataset.
+   * @param subsamplingRate Fraction of the training data used for learning decision tree.
+   * @param numSubsamples Number of subsamples of this RDD to take.
+   * @param seed Random seed.
+   * @param randomStateFactory A function that accepts a seed and returns a fresh instance
+   *                           of the desired distribution.
+   * @return BaggedPoint dataset representation.
+   */
+  private def convertToBaggedRDDHelper[Datum](
+    input: RDD[Datum],
+    subsamplingRate: Double,
+    numSubsamples: Int,
+    seed: Long,
+    randomStateFactory: Long => AbstractIntegerDistribution): RDD[BaggedPoint[Datum]] = {
+
+    input.mapPartitionsWithIndex { (partitionIndex, instances) =>
+      // Use random seed = seed + partitionIndex + 1 to make generation reproducible.
+      // Use a different seed for each partition to ensure each partition has an independent set
+      // of random numbers.
+      val partitionSeed = seed + partitionIndex + 1
+      val localRandomState = randomStateFactory(partitionSeed)
+      instances.map { instance =>
+        new BaggedPoint(instance, subsamplingRate, numSubsamples, localRandomState)
+      }
+    }
+  }
+
+  /**
+   * Flattens a baggedRDD to a pair RDD. The key is the subsampleIndex. The instances are
+   * duplicated in the flattened representation according to their specified subsampleWeight.
+   * (e.g. subsampleWeight == 0 then no instances, subsampleWeight == 1 then one instance,
+   * subsampleWeight == 2 then two instances, etc.)
+   *
+   * @param baggedRdd BaggedPoint dataset representation.
+   * @return Pair RDD that contains a flattened representation of the data.
+   */
   def flattenBaggedRDD[Datum](baggedRdd: RDD[BaggedPoint[Datum]], seed: Long): RDD[(Int, Datum)] = {
 
-    val rnd = new Random(seed)
-
     /**
-      * Converts a subsampleWeight of type Double to an Int. This is done by rounding
-      * probabilistically. For example, an input subsampleWeight of 1.3 has a 70% chance of being
-      * rounded to 1 and a 30% chance of being rounded to 2.
-      *
-      * @param subsampleWeight Weight of this instance in each subsampled dataset.
-      * @return The rounded subsampleWeight.
-      */
-    def roundWeight(subsampleWeight: Double): Int = {
-      val subsampleWeightBase = subsampleWeight.toInt
-      val subsampleWeightDiff = subsampleWeight - subsampleWeightBase
-      if (subsampleWeightDiff == 0)
-        subsampleWeightBase
-      else
-        subsampleWeightBase + (if (rnd.nextFloat() < subsampleWeightDiff) 1 else 0)
+     * Converts a subsampleWeight of type Double to an Int. This is done by rounding
+     * probabilistically. For example, an input subsampleWeight of 1.3 has a 70% chance of being
+     * rounded to 1 and a 30% chance of being rounded to 2.
+     *
+     * @param subsampleWeight Weight of this instance in each subsampled dataset.
+     * @return The rounded subsampleWeight.
+     */
+    def roundWeight(subsampleWeight: Double, rnd: Random): Int = {
+      val base = subsampleWeight.toInt
+      val diff = subsampleWeight - base
+      if (diff == 0) base else base + (if (rnd.nextFloat() < diff) 1 else 0)
     }
 
-    baggedRdd.flatMap { baggedPoint =>
-      baggedPoint.subsampleWeights.zipWithIndex.flatMap {
-        case (subsampleWeight, subsampleId) => {
-          Seq.fill(roundWeight(subsampleWeight))((subsampleId, baggedPoint.datum))
+    baggedRdd.mapPartitionsWithIndex { (partitionIndex, iter) =>
+      val rnd = new Random(seed + partitionIndex)
+      iter.flatMap { baggedPoint =>
+        baggedPoint.subsampleWeights.zipWithIndex.flatMap {
+          case (subsampleWeight, subsampleId) =>
+            Seq.fill(roundWeight(subsampleWeight, rnd))((subsampleId, baggedPoint.datum))
         }
       }
     }
