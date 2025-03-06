@@ -5,30 +5,40 @@
 [![Release](https://img.shields.io/github/v/release/linkedin/isolation-forest)](https://github.com/linkedin/isolation-forest/releases/)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
 
+## Table of contents
+- [Introduction](#introduction)
+- [Features](#features)
+- [Getting started](#getting-started)
+  - [Building the library](#building-the-library)
+  - [Add an isolation-forest dependency to your project](#add-an-isolation-forest-dependency-to-your-project)
+- [Usage examples](#usage-examples)
+  - [Model parameters](#model-parameters)
+  - [Training and scoring](#training-and-scoring)
+  - [Saving and loading a trained model](#saving-and-loading-a-trained-model)
+- [ONNX conversion for portable inference](#onnx-conversion-for-portable-inference)
+  - [Converting a trained model to ONNX](#converting-a-trained-model-to-onnx)
+  - [Using the ONNX model for inference (example in Python)](#using-the-onnx-model-for-inference-example-in-python)
+- [Performance and benchmarks](#performance-and-benchmarks)
+- [Copyright and license](#copyright-and-license)
+- [Contributing](#contributing)
+- [References](#references)
+
 ## Introduction
 
-This is a Scala/Spark implementation of the Isolation Forest unsupervised outlier detection
-algorithm. This library was created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from
-the LinkedIn Anti-Abuse AI team.
+This is a distributed Scala/Spark implementation of the Isolation Forest unsupervised outlier detection
+algorithm. It features support for ONNX export for easy cross-platform inference. This library was created
+by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the LinkedIn Anti-Abuse AI team.
 
-The `isolation-forest` module supports distributed training and scoring in Scala using Spark data structures.
-It inherits from the `Estimator` and `Model` classes in [Spark's ML library](https://spark.apache.org/mllib/)
-in order to take advantage of machinery such as `Pipeline`s. Model persistence on HDFS is
-supported.
+## Features
 
-The `isolation-forest-onnx` module provides Python-based converter to convert a trained model to ONNX format for broad
-portability across platforms and languages. [ONNX](https://onnx.ai/) is an open format built to represent machine
-learning models.
+* **Distributed training and scoring:** The `isolation-forest` module supports distributed training and scoring in Scala
+  using Spark data structures. It inherits from the `Estimator` and `Model` classes in [Spark's ML library](https://spark.apache.org/mllib/) in
+  order to take advantage of machinery such as `Pipeline`s. Model persistence on HDFS is supported.
+* **Broad portability via ONNX:** The `isolation-forest-onnx` module provides Python-based converter to convert a
+  trained model to ONNX format for broad portability across platforms and languages. [ONNX](https://onnx.ai/) is an open format built
+  to represent machine learning models.
 
-## Copyright
-
-Copyright 2019 LinkedIn Corporation
-All Rights Reserved.
-
-Licensed under the BSD 2-Clause License (the "License").
-See [License](LICENSE) in the project root for license information.
-
-## How to use
+## Getting started
 
 ### Building the library
 
@@ -49,6 +59,11 @@ build command.
 To force a rebuild of the library, you can use:
 ```bash
 ./gradlew clean build --no-build-cache
+```
+
+To just run the tests:
+```bash
+./gradlew test
 ```
 
 ### Add an isolation-forest dependency to your project
@@ -89,6 +104,8 @@ Here is an example for a recent Spark/Scala version combination.
 </dependency>
 ```
 
+## Usage examples
+
 ### Model parameters
 
 | Parameter          | Default Value    | Description                                                                                                                                                                                                                                                                                                                                                                          |
@@ -103,6 +120,7 @@ Here is an example for a recent Spark/Scala version combination.
 | featuresCol        | "features"       | The feature vector. This column must exist in the input DataFrame for training and scoring.                                                                                                                                                                                                                                                                                          |
 | predictionCol      | "predictedLabel" | The predicted label. This column is appended to the input DataFrame upon scoring.                                                                                                                                                                                                                                                                                                    |
 | scoreCol           | "outlierScore"   | The outlier score. This column is appended to the input DataFrame upon scoring.                                                                                                                                                                                                                                                                                                      |
+
 
 ### Training and scoring
 
@@ -203,7 +221,7 @@ isolationForestModel.write.overwrite.save(path)
 val isolationForestModel2 = IsolationForestModel.load(path)
 ```
 
-## ONNX model conversion and inference
+## ONNX conversion for portable inference
 
 ### Converting a trained model to ONNX
 
@@ -276,7 +294,7 @@ print('ONNX Converter outlier scores:')
 print(np.transpose(actual_outlier_scores[:num_examples_to_print])[0])
 ```
 
-## Validation
+## Performance and benchmarks
 
 The original 2008 "Isolation forest" paper by Liu et al. published the AUROC results obtained by
 applying the algorithm to 12 benchmark outlier detection datasets. We applied our implementation of
@@ -299,11 +317,19 @@ result. The quoted uncertainty is the one-sigma error on the mean.
 | [Arrhythmia](http://odds.cs.stonybrook.edu/arrhythmia-dataset/)                    | 0.80                                  | 0.804 &plusmn; 0.002                           |
 | [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/)                    | 0.85                                  | 0.8481 &plusmn; 0.0002                         |
 
-Our implementation provides AUROC values that are in very good agreement the results in the original
-Liu et al. publication. There are a few very small discrepancies that are likely due the limited
+Our implementation provides AUROC values that are in very good agreement with the results in the original
+Liu et al. publication. There are a few very small discrepancies that are likely due to the limited
 precision of the AUROC values reported in Liu et al.
 
-## Contributions
+## Copyright and license
+
+Copyright 2019 LinkedIn Corporation
+All Rights Reserved.
+
+Licensed under the BSD 2-Clause License (the "License").
+See [License](LICENSE) in the project root for license information.
+
+## Contributing
 
 If you would like to contribute to this project, please review the instructions [here](CONTRIBUTING.md). 
 
