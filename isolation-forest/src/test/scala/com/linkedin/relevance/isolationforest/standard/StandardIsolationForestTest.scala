@@ -1,7 +1,6 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.standard
 
-import com.linkedin.relevance.isolationforest.TestUtils._
-import java.io.File
+import com.linkedin.relevance.isolationforest.core.TestUtils._
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.scalactic.Tolerance._
@@ -9,8 +8,10 @@ import org.scalactic.TripleEquals._
 import org.testng.Assert
 import org.testng.annotations.Test
 
+import java.io.File
 
-class IsolationForestTest {
+
+class StandardIsolationForestTest {
 
   @Test(description = "isolationForestEstimatorWriteReadTest")
   def isolationForestEstimatorWriteReadTest(): Unit = {
@@ -20,7 +21,7 @@ class IsolationForestTest {
     val savePath = System.getProperty("java.io.tmpdir") + "/isolationForestEstimatorWriteReadTest"
 
     val contamination = 0.02
-    val isolationForest1 = new IsolationForest()
+    val isolationForest1 = new StandardIsolationForest()
       .setNumEstimators(200)
       .setBootstrap(true)
       .setMaxSamples(10000)
@@ -33,7 +34,7 @@ class IsolationForestTest {
       .setRandomSeed(1)
 
     isolationForest1.write.overwrite().save(savePath)
-    val isolationForest2 = IsolationForest.load(savePath)
+    val isolationForest2 = StandardIsolationForest.load(savePath)
     deleteDirectory(new File(savePath))
 
     Assert.assertEquals(
@@ -54,7 +55,7 @@ class IsolationForestTest {
 
     // Train a new isolation forest model
     val contamination = 0.02
-    val isolationForest = new IsolationForest()
+    val isolationForest = new StandardIsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)
@@ -93,7 +94,7 @@ class IsolationForestTest {
     val data = loadMammographyData(spark)
 
     // Train a new isolation forest model
-    val isolationForest = new IsolationForest()
+    val isolationForest = new StandardIsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)
@@ -132,7 +133,7 @@ class IsolationForestTest {
     val data = loadMammographyData(spark)
 
     // Train a new isolation forest model
-    val isolationForest = new IsolationForest()
+    val isolationForest = new StandardIsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)
@@ -170,7 +171,7 @@ class IsolationForestTest {
 
     // Train a new isolation forest model
     val contamination = 0.07
-    val isolationForest = new IsolationForest()
+    val isolationForest = new StandardIsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)

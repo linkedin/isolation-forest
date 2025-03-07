@@ -7,17 +7,18 @@
  *
  */
 
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
-import com.linkedin.relevance.isolationforest.Nodes.{ExternalNode, InternalNode, Node}
+import com.linkedin.relevance.isolationforest.core.Nodes.{ExternalNode, InternalNode, Node}
+import com.linkedin.relevance.isolationforest.standard.StandardIsolationForestModel
 import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.ml.param.{ParamPair, Params}
 import org.apache.spark.ml.util.{MLReader, MLWriter}
-import org.json4s.{DefaultFormats, JObject, JValue}
+import org.apache.spark.sql.SparkSession
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods.{compact, parse, render}
+import org.json4s.{DefaultFormats, JObject, JValue}
 
 
 /**
@@ -35,16 +36,16 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   /**
     * Reads a saved isolation forest model from disk.
     */
-  class IsolationForestModelReader extends MLReader[IsolationForestModel] with Serializable {
+  class IsolationForestModelReader extends MLReader[StandardIsolationForestModel] with Serializable {
 
     /**
       * Overrides [[org.apache.spark.ml.util.MLReader.load]] in order to load an
-      * [[IsolationForestModel]] instance.
+      * [[StandardIsolationForestModel]] instance.
       *
       * @param path The path to the saved isolation forest model.
       * @return The loaded IsolationForestModel instance.
       */
-    override def load(path: String): IsolationForestModel = {
+    override def load(path: String): StandardIsolationForestModel = {
 
       implicit val format = DefaultFormats
       val (metadata, treesData) = loadImpl(path, sparkSession)
@@ -57,7 +58,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
         case externalNode: ExternalNode => new IsolationTree(externalNode.asInstanceOf[ExternalNode])
       }
 
-      val model = new IsolationForestModel(metadata.uid, trees, numSamples, numFeatures)
+      val model = new StandardIsolationForestModel(metadata.uid, trees, numSamples, numFeatures)
       metadata.setParams(model)
       model.setOutlierScoreThreshold(outlierScoreThreshold)
 
@@ -82,7 +83,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
       val metadata = loadMetadata(
         path,
         spark,
-        "com.linkedin.relevance.isolationforest.IsolationForestModel")
+        "com.linkedin.relevance.isolationforest.standard.StandardIsolationForestModel")
 
       val dataPath = new Path(path, "data").toString
       logInfo(s"Loading IsolationForestModel tree data from path ${dataPath}")
@@ -227,7 +228,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     *
     * @param instance The IsolationForestModel instance to write to disk.
     */
-  class IsolationForestModelWriter(instance: IsolationForestModel) extends MLWriter {
+  class IsolationForestModelWriter(instance: StandardIsolationForestModel) extends MLWriter {
 
     /**
       * Overrides [[org.apache.spark.ml.util.MLWriter.saveImpl]].

@@ -6,7 +6,7 @@
  *
  */
 
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
 import org.apache.commons.math3.distribution.{AbstractIntegerDistribution, BinomialDistribution, PoissonDistribution}
 import org.apache.spark.rdd.RDD

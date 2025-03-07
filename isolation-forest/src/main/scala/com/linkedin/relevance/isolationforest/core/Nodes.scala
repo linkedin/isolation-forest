@@ -1,5 +1,4 @@
-package com.linkedin.relevance.isolationforest
-
+package com.linkedin.relevance.isolationforest.core
 
 /**
   * Contains the node classes used to construct isolation trees.

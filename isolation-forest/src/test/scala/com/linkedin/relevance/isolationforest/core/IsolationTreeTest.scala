@@ -1,8 +1,8 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
-import com.linkedin.relevance.isolationforest.Nodes.{ExternalNode, InternalNode}
-import com.linkedin.relevance.isolationforest.TestUtils._
-import com.linkedin.relevance.isolationforest.Utils.DataPoint
+import TestUtils._
+import com.linkedin.relevance.isolationforest.core.Nodes.{ExternalNode, InternalNode}
+import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
 import org.testng.Assert
 import org.testng.annotations.Test
 

@@ -1,6 +1,6 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
-import org.apache.spark.ml.param.{BooleanParam, DoubleParam, IntParam, LongParam, Param, ParamValidators, Params}
+import org.apache.spark.ml.param._
 
 
 /**

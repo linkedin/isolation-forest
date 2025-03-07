@@ -1,7 +1,7 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
-import com.linkedin.relevance.isolationforest.Nodes.{ExternalNode, InternalNode, Node}
-import com.linkedin.relevance.isolationforest.Utils.DataPoint
+import com.linkedin.relevance.isolationforest.core.Nodes.{ExternalNode, InternalNode, Node}
+import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
 import org.apache.spark.internal.Logging
 
 import scala.annotation.tailrec

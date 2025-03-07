@@ -1,12 +1,13 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.standard
 
-import com.linkedin.relevance.isolationforest.Utils.{DataPoint, OutlierScore}
+import com.linkedin.relevance.isolationforest.core.{BaggedPoint, IsolationForestParams, IsolationTree}
+import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, OutlierScore}
 import org.apache.spark.internal.Logging
+import org.apache.spark.ml.Estimator
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
-import org.apache.spark.ml.Estimator
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset}
 import org.apache.spark.{HashPartitioner, TaskContext}
@@ -17,14 +18,14 @@ import org.apache.spark.{HashPartitioner, TaskContext}
   *
   * @param uid The immutable unique ID for the model.
   */
-class IsolationForest(override val uid: String) extends Estimator[IsolationForestModel]
+class StandardIsolationForest(override val uid: String) extends Estimator[StandardIsolationForestModel]
   with IsolationForestParams with DefaultParamsWritable with Logging {
 
-  def this() = this(Identifiable.randomUID("isolation-forest"))
+  def this() = this(Identifiable.randomUID("standard-isolation-forest"))
 
-  override def copy(extra: ParamMap): IsolationForest = {
+  override def copy(extra: ParamMap): StandardIsolationForest = {
 
-    copyValues(new IsolationForest(uid), extra)
+    copyValues(new StandardIsolationForest(uid), extra)
   }
 
   /**
@@ -34,7 +35,7 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
     *             each data instance.
     * @return The trained isolation forest model.
     */
-  override def fit(data: Dataset[_]): IsolationForestModel = {
+  override def fit(data: Dataset[_]): StandardIsolationForestModel = {
 
     import data.sparkSession.implicits._
 
@@ -63,7 +64,7 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
 
     // Create the IsolationForestModel instance and set the parent.
     val isolationForestModel = copyValues(
-      new IsolationForestModel(
+      new StandardIsolationForestModel(
         uid,
         isolationTrees,
         resolvedParams.numSamples,
@@ -235,8 +236,8 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
    * @param df The training DataFrame originally used to fit the model.
    */
   private def computeAndSetModelThreshold(
-    isolationForestModel: IsolationForestModel,
-    df: DataFrame): Unit = {
+                                           isolationForestModel: StandardIsolationForestModel,
+                                           df: DataFrame): Unit = {
 
     import df.sparkSession.implicits._
 
@@ -333,7 +334,7 @@ class IsolationForest(override val uid: String) extends Estimator[IsolationFores
 /**
   * Companion object to the IsolationForest class.
   */
-case object IsolationForest extends DefaultParamsReadable[IsolationForest] {
+case object StandardIsolationForest extends DefaultParamsReadable[StandardIsolationForest] {
 
   /**
     * Loads a saved IsolationForest Estimator ML instance.
@@ -341,5 +342,5 @@ case object IsolationForest extends DefaultParamsReadable[IsolationForest] {
     * @param path Path to the saved IsolationForest Estimator ML instance directory.
     * @return The saved IsolationForest Estimator ML instance.
     */
-  override def load(path: String): IsolationForest = super.load(path)
+  override def load(path: String): StandardIsolationForest = super.load(path)
 }
