@@ -1,4 +1,4 @@
-package com.linkedin.relevance.isolationforest.standard
+package com.linkedin.relevance.isolationforest
 
 import com.linkedin.relevance.isolationforest.core.TestUtils._
 import org.apache.commons.io.FileUtils.deleteDirectory
@@ -11,7 +11,7 @@ import org.testng.annotations.Test
 import java.io.File
 
 
-class StandardIsolationForestTest {
+class IsolationForestTest {
 
   @Test(description = "isolationForestEstimatorWriteReadTest")
   def isolationForestEstimatorWriteReadTest(): Unit = {
@@ -21,7 +21,7 @@ class StandardIsolationForestTest {
     val savePath = System.getProperty("java.io.tmpdir") + "/isolationForestEstimatorWriteReadTest"
 
     val contamination = 0.02
-    val isolationForest1 = new StandardIsolationForest()
+    val isolationForest1 = new IsolationForest()
       .setNumEstimators(200)
       .setBootstrap(true)
       .setMaxSamples(10000)
@@ -34,7 +34,7 @@ class StandardIsolationForestTest {
       .setRandomSeed(1)
 
     isolationForest1.write.overwrite().save(savePath)
-    val isolationForest2 = StandardIsolationForest.load(savePath)
+    val isolationForest2 = IsolationForest.load(savePath)
     deleteDirectory(new File(savePath))
 
     Assert.assertEquals(
@@ -55,7 +55,7 @@ class StandardIsolationForestTest {
 
     // Train a new isolation forest model
     val contamination = 0.02
-    val isolationForest = new StandardIsolationForest()
+    val isolationForest = new IsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)
@@ -94,7 +94,7 @@ class StandardIsolationForestTest {
     val data = loadMammographyData(spark)
 
     // Train a new isolation forest model
-    val isolationForest = new StandardIsolationForest()
+    val isolationForest = new IsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)
@@ -133,7 +133,7 @@ class StandardIsolationForestTest {
     val data = loadMammographyData(spark)
 
     // Train a new isolation forest model
-    val isolationForest = new StandardIsolationForest()
+    val isolationForest = new IsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)
@@ -171,7 +171,7 @@ class StandardIsolationForestTest {
 
     // Train a new isolation forest model
     val contamination = 0.07
-    val isolationForest = new StandardIsolationForest()
+    val isolationForest = new IsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)

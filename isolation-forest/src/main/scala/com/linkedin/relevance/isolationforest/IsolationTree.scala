@@ -1,7 +1,8 @@
-package com.linkedin.relevance.isolationforest.core
+package com.linkedin.relevance.isolationforest
 
-import com.linkedin.relevance.isolationforest.core.Nodes.{ExternalNode, InternalNode, Node}
 import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
+import com.linkedin.relevance.isolationforest.core.{IsolationTreeBase, Utils}
+import Nodes.{ExternalNode, InternalNode, Node}
 import org.apache.spark.internal.Logging
 
 import scala.annotation.tailrec
@@ -14,7 +15,7 @@ import scala.util.Random
   *
   * @param node The root node of the isolation tree model.
   */
-private[isolationforest] class IsolationTree(val node: Node) extends Serializable {
+private[isolationforest] class IsolationTree(val node: Node) extends IsolationTreeBase {
 
   import IsolationTree._
 
@@ -25,7 +26,7 @@ private[isolationforest] class IsolationTree(val node: Node) extends Serializabl
     * @param dataInstance The feature array for a single data instance.
     * @return The path length to the instance.
     */
-  private[isolationforest] def calculatePathLength(dataInstance: DataPoint): Float =
+  def calculatePathLength(dataInstance: DataPoint): Float =
     pathLength(dataInstance, node)
 }
 

@@ -1,7 +1,7 @@
-package com.linkedin.relevance.isolationforest.standard
+package com.linkedin.relevance.isolationforest
 
 import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, avgPathLength}
-import com.linkedin.relevance.isolationforest.core.{IsolationForestModelReadWrite, IsolationForestParams, IsolationTree}
+import com.linkedin.relevance.isolationforest.core.{IsolationForestModelReadWrite, IsolationForestParamsBase}
 import org.apache.spark.ml.Model
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
@@ -22,12 +22,11 @@ import org.apache.spark.sql.{DataFrame, Dataset}
   *                    a given isolation tree may not have any nodes using some of these features, e.g., a shallow tree
   *                    where the number of features in the training data exceeds the number of nodes in the tree.
   */
-class StandardIsolationForestModel(
+class IsolationForestModel(
   override val uid: String,
   val isolationTrees: Array[IsolationTree],
   private val numSamples: Int,
-  private val numFeatures: Int)
-  extends Model[StandardIsolationForestModel] with IsolationForestParams with MLWritable {
+  private val numFeatures: Int) extends Model[IsolationForestModel] with IsolationForestParamsBase with MLWritable {
 
   require(numSamples > 0, s"parameter numSamples must be >0, but given invalid value ${numSamples}")
   final def getNumSamples: Int = numSamples
@@ -47,9 +46,9 @@ class StandardIsolationForestModel(
   }
   final def getOutlierScoreThreshold: Double = outlierScoreThreshold
 
-  override def copy(extra: ParamMap): StandardIsolationForestModel = {
+  override def copy(extra: ParamMap): IsolationForestModel = {
 
-    val isolationForestCopy = new StandardIsolationForestModel(uid, isolationTrees, numSamples, numFeatures)
+    val isolationForestCopy = new IsolationForestModel(uid, isolationTrees, numSamples, numFeatures)
       .setParent(this.parent)
     isolationForestCopy.setOutlierScoreThreshold(outlierScoreThreshold)
     copyValues(isolationForestCopy, extra)
@@ -129,7 +128,7 @@ class StandardIsolationForestModel(
 /**
   * Companion object to the IsolationForestModel class.
   */
-case object StandardIsolationForestModel extends MLReadable[StandardIsolationForestModel] {
+case object IsolationForestModel extends MLReadable[IsolationForestModel] {
 
   /**
     * Returns an IsolationForestModelReader instance that can be used to read a saved isolation
@@ -137,7 +136,7 @@ case object StandardIsolationForestModel extends MLReadable[StandardIsolationFor
     *
     * @return An IsolationForestModelReader instance.
     */
-  override def read: MLReader[StandardIsolationForestModel] =
+  override def read: MLReader[IsolationForestModel] =
     new IsolationForestModelReadWrite.IsolationForestModelReader
 
   /**
@@ -146,5 +145,5 @@ case object StandardIsolationForestModel extends MLReadable[StandardIsolationFor
     * @param path The path to the saved isolation forest model.
     * @return The loaded IsolationForestModel instance.
     */
-  override def load(path: String): StandardIsolationForestModel = super.load(path)
+  override def load(path: String): IsolationForestModel = super.load(path)
 }

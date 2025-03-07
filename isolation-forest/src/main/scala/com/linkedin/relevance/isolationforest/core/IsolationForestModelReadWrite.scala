@@ -9,8 +9,8 @@
 
 package com.linkedin.relevance.isolationforest.core
 
-import com.linkedin.relevance.isolationforest.core.Nodes.{ExternalNode, InternalNode, Node}
-import com.linkedin.relevance.isolationforest.standard.StandardIsolationForestModel
+import com.linkedin.relevance.isolationforest.{IsolationForestModel, IsolationTree}
+import com.linkedin.relevance.isolationforest.Nodes.{ExternalNode, InternalNode, Node}
 import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.param.{ParamPair, Params}
@@ -36,16 +36,16 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   /**
     * Reads a saved isolation forest model from disk.
     */
-  class IsolationForestModelReader extends MLReader[StandardIsolationForestModel] with Serializable {
+  class IsolationForestModelReader extends MLReader[IsolationForestModel] with Serializable {
 
     /**
       * Overrides [[org.apache.spark.ml.util.MLReader.load]] in order to load an
-      * [[StandardIsolationForestModel]] instance.
+      * [[IsolationForestModel]] instance.
       *
       * @param path The path to the saved isolation forest model.
       * @return The loaded IsolationForestModel instance.
       */
-    override def load(path: String): StandardIsolationForestModel = {
+    override def load(path: String): IsolationForestModel = {
 
       implicit val format = DefaultFormats
       val (metadata, treesData) = loadImpl(path, sparkSession)
@@ -58,7 +58,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
         case externalNode: ExternalNode => new IsolationTree(externalNode.asInstanceOf[ExternalNode])
       }
 
-      val model = new StandardIsolationForestModel(metadata.uid, trees, numSamples, numFeatures)
+      val model = new IsolationForestModel(metadata.uid, trees, numSamples, numFeatures)
       metadata.setParams(model)
       model.setOutlierScoreThreshold(outlierScoreThreshold)
 
@@ -83,7 +83,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
       val metadata = loadMetadata(
         path,
         spark,
-        "com.linkedin.relevance.isolationforest.standard.StandardIsolationForestModel")
+        "com.linkedin.relevance.isolationforest.IsolationForestModel")
 
       val dataPath = new Path(path, "data").toString
       logInfo(s"Loading IsolationForestModel tree data from path ${dataPath}")
@@ -228,7 +228,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     *
     * @param instance The IsolationForestModel instance to write to disk.
     */
-  class IsolationForestModelWriter(instance: StandardIsolationForestModel) extends MLWriter {
+  class IsolationForestModelWriter(instance: IsolationForestModel) extends MLWriter {
 
     /**
       * Overrides [[org.apache.spark.ml.util.MLWriter.saveImpl]].
@@ -322,7 +322,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   /**
     * Stores the serializable data for a [[Node]].
     *
-    * @param id Node index used for tree reconstruction. Indices follow a pre-order traversal.
+    * @param id Nodes index used for tree reconstruction. Indices follow a pre-order traversal.
     * @param leftChild Left child node index, or value of -1 if this node is a leaf node.
     * @param rightChild Right child node index, or value of -1 if this node is a leaf node.
     * @param splitAttribute The feature upon which the split was performed, or -1 if this node is a
@@ -357,7 +357,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
         * instances.
         *
         * @param node The head node of the binary tree to be serialized.
-        * @param id Node index used for tree reconstruction. Indices follow a pre-order traversal.
+        * @param id Nodes index used for tree reconstruction. Indices follow a pre-order traversal.
         * @return (sequence of nodes in pre-order traversal order, largest ID in subtree)
         */
       def buildInternal(node: Node, id: Int): (Seq[NodeData], Int) = {
@@ -398,7 +398,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   /**
     * Stores the data for an ensemble of trees constructed of [[Node]]s.
     *
-    * @param treeID The ID specifying the tree to which this node belongs.
+    * @param treeID   The ID specifying the tree to which this node belongs.
     * @param nodeData The [[NodeData]] instance containing the information from the corresponding
     *                 [[Node]] in the tree.
     */

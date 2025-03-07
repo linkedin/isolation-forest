@@ -1,8 +1,8 @@
 package com.linkedin.relevance.isolationforest.core
 
 import TestUtils._
-import com.linkedin.relevance.isolationforest.core.Nodes.ExternalNode
-import com.linkedin.relevance.isolationforest.standard.{StandardIsolationForest, StandardIsolationForestModel}
+import com.linkedin.relevance.isolationforest.{IsolationForest, IsolationForestModel, IsolationTree}
+import com.linkedin.relevance.isolationforest.Nodes.ExternalNode
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.feature.VectorAssembler
@@ -25,7 +25,7 @@ class IsolationForestModelWriteReadTest extends Logging {
     val data = loadMammographyData(spark)
 
     // Train a new isolation forest model
-    val isolationForest = new StandardIsolationForest()
+    val isolationForest = new IsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)
@@ -41,7 +41,7 @@ class IsolationForestModelWriteReadTest extends Logging {
     // Write the trained model to disk and then read it back from disk
     val savePath = System.getProperty("java.io.tmpdir") + "/savedIsolationForestModel"
     isolationForestModel1.write.overwrite().save(savePath)
-    val isolationForestModel2 = StandardIsolationForestModel.load(savePath)
+    val isolationForestModel2 = IsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
 
     // Assert that all parameter values are equal
@@ -89,7 +89,7 @@ class IsolationForestModelWriteReadTest extends Logging {
     val data = loadMammographyData(spark)
 
     // Train a new isolation forest model
-    val isolationForest = new StandardIsolationForest()
+    val isolationForest = new IsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(256)
@@ -105,7 +105,7 @@ class IsolationForestModelWriteReadTest extends Logging {
     // Write the trained model to disk and then read it back from disk
     val savePath = System.getProperty("java.io.tmpdir") + "/savedIsolationForestModelZeroContamination"
     isolationForestModel1.write.overwrite().save(savePath)
-    val isolationForestModel2 = StandardIsolationForestModel.load(savePath)
+    val isolationForestModel2 = IsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
 
     // Assert that all parameter values are equal
@@ -169,7 +169,7 @@ class IsolationForestModelWriteReadTest extends Logging {
       .as[LabeledDataPointVector]
 
     // Train a new isolation forest model
-    val isolationForest = new StandardIsolationForest()
+    val isolationForest = new IsolationForest()
       .setNumEstimators(100)
       .setBootstrap(false)
       .setMaxSamples(3)
@@ -185,7 +185,7 @@ class IsolationForestModelWriteReadTest extends Logging {
     // Write the trained model to disk and then read it back from disk
     val savePath = System.getProperty("java.io.tmpdir") + "/savedIsolationForestModelIdenticalFeatures"
     isolationForestModel1.write.overwrite().save(savePath)
-    val isolationForestModel2 = StandardIsolationForestModel.load(savePath)
+    val isolationForestModel2 = IsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
 
     // Assert that the root node of every tree is an external node (because no splits could be made)
@@ -211,13 +211,13 @@ class IsolationForestModelWriteReadTest extends Logging {
     val spark = getSparkSession
 
     // Create an isolation forest model with no isolation trees
-    val isolationForestModel1 = new StandardIsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
+    val isolationForestModel1 = new IsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
     isolationForestModel1.setOutlierScoreThreshold(0.5)
 
     // Write the trained model to disk and then read it back from disk
     val savePath = System.getProperty("java.io.tmpdir") + "/emptyIsolationForestModelWriteReadTest"
     isolationForestModel1.write.overwrite().save(savePath)
-    val isolationForestModel2 = StandardIsolationForestModel.load(savePath)
+    val isolationForestModel2 = IsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
 
     // Assert that all parameter values are equal
@@ -242,7 +242,7 @@ class IsolationForestModelWriteReadTest extends Logging {
     val spark = getSparkSession
 
     val modelPath = "src/test/resources/savedIsolationForestModel"
-    val isolationForestModel = StandardIsolationForestModel.load(modelPath)
+    val isolationForestModel = IsolationForestModel.load(modelPath)
     val observedTreeStructure = isolationForestModel.isolationTrees(0).node.toString
 
     val expectedTreeStructurePath = "src/test/resources/expectedTreeStructure.txt"

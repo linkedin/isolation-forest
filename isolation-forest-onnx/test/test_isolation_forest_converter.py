@@ -6,8 +6,10 @@ import onnx
 import pytest
 from onnxruntime import InferenceSession
 
-from isolationforestonnx.isolation_forest_converter import IsolationForestConverter, _init_tree_ensemble_attrs
-
+from isolationforestonnx.isolation_forest_converter import (
+    IsolationForestConverter,
+    _init_tree_ensemble_attrs,
+)
 
 BASE_RESOURCES_PATH = Path(__file__).parent / "resources"
 ALLOWED_DIFFERENCE = 0.02  # Allowed difference from the expected AUROC.

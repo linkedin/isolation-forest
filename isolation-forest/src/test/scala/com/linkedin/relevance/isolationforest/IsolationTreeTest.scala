@@ -1,7 +1,7 @@
-package com.linkedin.relevance.isolationforest.core
+package com.linkedin.relevance.isolationforest
 
-import TestUtils._
-import com.linkedin.relevance.isolationforest.core.Nodes.{ExternalNode, InternalNode}
+import com.linkedin.relevance.isolationforest.Nodes.{ExternalNode, InternalNode}
+import com.linkedin.relevance.isolationforest.core.TestUtils.readCsv
 import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
 import org.testng.Assert
 import org.testng.annotations.Test

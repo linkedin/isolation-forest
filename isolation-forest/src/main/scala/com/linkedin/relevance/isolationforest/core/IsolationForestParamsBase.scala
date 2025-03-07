@@ -6,7 +6,7 @@ import org.apache.spark.ml.param._
 /**
   * Params for the isolation forest model.
   */
-trait IsolationForestParams extends Params {
+trait IsolationForestParamsBase extends Params {
 
   final val numEstimators = new IntParam(this, "numEstimators", "The number of trees in the" +
     " ensemble.", ParamValidators.gt(0.0))

@@ -136,7 +136,7 @@ private[isolationforest] case object BaggedPoint {
       // Use random seed = seed + partitionIndex + 1 to make generation reproducible.
       // Use a different seed for each partition to ensure each partition has an independent set
       // of random numbers.
-      val partitionSeed = seed + partitionIndex + 1
+      val partitionSeed = seed + partitionIndex
       val localRandomState = randomStateFactory(partitionSeed)
       instances.map { instance =>
         new BaggedPoint(instance, subsamplingRate, numSubsamples, localRandomState)

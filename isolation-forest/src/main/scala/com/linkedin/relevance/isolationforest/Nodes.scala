@@ -1,4 +1,6 @@
-package com.linkedin.relevance.isolationforest.core
+package com.linkedin.relevance.isolationforest
+
+import com.linkedin.relevance.isolationforest.core.NodesBase.{ExternalNodeBase, InternalNodeBase, NodeBase}
 
 /**
   * Contains the node classes used to construct isolation trees.
@@ -8,8 +10,7 @@ private[isolationforest] case object Nodes {
   /**
     * Base trait Nodes used in the isolation forest.
     */
-  sealed trait Node extends Serializable {
-    val subtreeDepth: Int
+  sealed trait Node extends NodeBase {
   }
 
   /**
@@ -17,14 +18,10 @@ private[isolationforest] case object Nodes {
     *
     * @param numInstances The number of data points that terminated in this node during training.
     */
-  case class ExternalNode(numInstances: Long) extends Node {
+  case class ExternalNode(numInstances: Long) extends Node with ExternalNodeBase {
 
     require(numInstances > 0, "parameter numInstances must be >0, but given invalid value" +
       s" ${numInstances}")
-
-    override val subtreeDepth: Int = 0
-
-    override def toString: String = s"ExternalNode(numInstances = $numInstances)"
   }
 
   /**
@@ -39,7 +36,7 @@ private[isolationforest] case object Nodes {
     leftChild: Node,
     rightChild: Node,
     splitAttribute: Int,
-    splitValue: Double) extends Node {
+    splitValue: Double) extends Node with InternalNodeBase {
 
     require(splitAttribute >= 0, "parameter splitAttribute must be >=0, but given invalid value" +
       s" ${splitAttribute}")
