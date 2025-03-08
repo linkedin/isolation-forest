@@ -2,23 +2,14 @@ import os
 import numpy as np
 import pandas as pd
 import pytest
-from pathlib import Path
 from onnxruntime import InferenceSession
 from isolationforestonnx.isolation_forest_converter import IsolationForestConverter
 
-BASE_PATH = "/tmp/isolationForestModelAndDataForONNX"
 SPARK_VERSION = os.environ.get("SPARK_VERSION")
 SCALA_VERSION_SHORT = os.environ.get("SCALA_VERSION_SHORT")
+BASE_PATH = "/tmp/isolationForestModelAndDataForONNX" + "_" + SPARK_VERSION + "_" + SCALA_VERSION_SHORT
 
 
-# @pytest.mark.skipif(
-#     not SPARK_VERSION or not SCALA_VERSION_SHORT,
-#     reason="Requires SPARK_VERSION and SCALA_VERSION_SHORT environment variables."
-# )
-@pytest.mark.skipif(
-    not (Path(BASE_PATH + "/model").exists() and Path(BASE_PATH + "/scored").exists()),
-    reason="No exported model or scored data found"
-)
 def test_isolation_forest_onnx_integration_end_to_end():
     """
     This is the second part of the end-to-end integration test. The first part is in
@@ -27,9 +18,8 @@ def test_isolation_forest_onnx_integration_end_to_end():
     between Spark and ONNX.
     """
 
-    base_path = BASE_PATH + "_" + SPARK_VERSION + "_" + SCALA_VERSION_SHORT
-    model_path = os.path.join(base_path, "model")
-    csv_path = os.path.join(base_path, "scored")
+    model_path = os.path.join(BASE_PATH, "model")
+    csv_path = os.path.join(BASE_PATH, "scored")
 
     # 1) data_dir => find the real Avro
     data_dir = os.path.join(model_path, "data")
