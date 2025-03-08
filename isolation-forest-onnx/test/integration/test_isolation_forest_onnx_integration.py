@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import pytest
-from pathlib import Path
+# from pathlib import Path
 from onnxruntime import InferenceSession
 from isolationforestonnx.isolation_forest_converter import IsolationForestConverter
 
@@ -12,7 +12,7 @@ SCALA_VERSION_SHORT = os.environ.get("SCALA_VERSION_SHORT")
 
 
 # @pytest.mark.skipif(
-#     not os.environ.get("SPARK_VERSION") or not os.environ.get("SCALA_VERSION_SHORT"),
+#     not SPARK_VERSION or not SCALA_VERSION_SHORT,
 #     reason="Requires SPARK_VERSION and SCALA_VERSION_SHORT environment variables."
 # )
 # @pytest.mark.skipif(
