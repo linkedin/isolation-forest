@@ -11,40 +11,40 @@ import scala.util.Random
 
 
 /**
-  * A trained isolation tree.
-  *
-  * @param node The root node of the isolation tree model.
-  */
+ * A trained isolation tree.
+ *
+ * @param node The root node of the isolation tree model.
+ */
 private[isolationforest] class IsolationTree(val node: Node) extends IsolationTreeBase {
 
   import IsolationTree._
 
   /**
-    * Returns the path length from the root node of this isolation tree to the node in the tree that
-    * contains a particular data point.
-    *
-    * @param dataInstance The feature array for a single data instance.
-    * @return The path length to the instance.
-    */
+   * Returns the path length from the root node of this isolation tree to the node in the tree that
+   * contains a particular data point.
+   *
+   * @param dataInstance The feature array for a single data instance.
+   * @return The path length to the instance.
+   */
   def calculatePathLength(dataInstance: DataPoint): Float =
     pathLength(dataInstance, node)
 }
 
 /**
-  * Companion object used to train the IsolationTree class.
-  */
+ * Companion object used to train the IsolationTree class.
+ */
 private[isolationforest] case object IsolationTree extends Logging {
 
   /**
-    * Fits a single isolation tree to the input data.
-    *
-    * @param data The 2D array containing the feature values (columns) for the data instances (rows)
-    *             used to train this particular isolation tree.
-    * @param randomSeed The random seed used to generate this tree.
-    * @param featureIndices Array containing the feature column indices used for training this
-    *                       particular tree.
-    * @return A trained isolation tree object.
-    */
+   * Fits a single isolation tree to the input data.
+   *
+   * @param data The 2D array containing the feature values (columns) for the data instances (rows)
+   *             used to train this particular isolation tree.
+   * @param randomSeed The random seed used to generate this tree.
+   * @param featureIndices Array containing the feature column indices used for training this
+   *                       particular tree.
+   * @return A trained isolation tree object.
+   */
   def fit(data: Array[DataPoint], randomSeed: Long, featureIndices: Array[Int]): IsolationTree = {
 
     logInfo(s"Fitting isolation tree with random seed ${randomSeed} on" +
@@ -98,12 +98,12 @@ private[isolationforest] case object IsolationTree extends Logging {
       featureIndices: Array[Int]): Node = {
 
       /**
-        * Randomly selects a feature and feature value to split upon.
-        *
-        * @param data The data at the particular node in question.
-        * @return Tuple containing the feature index and the split value. Feature index is -1 if no
-        *         features could be split.
-        */
+       * Randomly selects a feature and feature value to split upon.
+       *
+       * @param data The data at the particular node in question.
+       * @return Tuple containing the feature index and the split value. Feature index is -1 if no
+       *         features could be split.
+       */
       def getFeatureToSplit(data: Array[DataPoint]): (Int, Double) = {
 
         val availableFeatures = ListBuffer.empty[Int] ++ featureIndices 
@@ -153,26 +153,26 @@ private[isolationforest] case object IsolationTree extends Logging {
   }
 
   /**
-    * Returns the path length from the root node of an isolation tree to the node in the tree that
-    * contains a particular data point.
-    *
-    * @param dataInstance      A single data point for scoring.
-    * @param node              The root node of the tree used to calculate the path length.
-    * @return The path length to the instance.
-    */
+   * Returns the path length from the root node of an isolation tree to the node in the tree that
+   * contains a particular data point.
+   *
+   * @param dataInstance      A single data point for scoring.
+   * @param node              The root node of the tree used to calculate the path length.
+   * @return The path length to the instance.
+   */
   def pathLength(dataInstance: DataPoint, node: Node): Float = {
 
     /**
-      * This recursive method returns the path length from a node of an isolation tree to the node
-      * in the tree that contains a particular data point. The returned path length includes an
-      * additional component dependent upon how many training data points ended up in this node. This
-      * is the PathLength(x,T,e) algorithm in the 2008 "Isolation Forest" paper by F. T. Liu, et al.
-      *
-      * @param dataInstance      A single data point for scoring.
-      * @param node              The root node of the tree used to calculate the path length.
-      * @param currentPathLength The path length to the current node.
-      * @return The path length to the instance.
-      */
+     * This recursive method returns the path length from a node of an isolation tree to the node
+     * in the tree that contains a particular data point. The returned path length includes an
+     * additional component dependent upon how many training data points ended up in this node. This
+     * is the PathLength(x,T,e) algorithm in the 2008 "Isolation Forest" paper by F. T. Liu, et al.
+     *
+     * @param dataInstance      A single data point for scoring.
+     * @param node              The root node of the tree used to calculate the path length.
+     * @param currentPathLength The path length to the current node.
+     * @return The path length to the instance.
+     */
     @tailrec
     def pathLengthInternal(dataInstance: DataPoint, node: Node, currentPathLength: Float): Float = {
 

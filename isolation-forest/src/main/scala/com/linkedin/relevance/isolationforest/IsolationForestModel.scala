@@ -13,15 +13,15 @@ import org.apache.spark.sql.{DataFrame, Dataset}
 
 
 /**
-  * A trained isolation tree model. It extends the spark.ml Model class.
-  *
-  * @param uid The immutable unique ID for the model.
-  * @param isolationTrees The array of isolation tree models that compose the isolation forest.
-  * @param numSamples The number of samples used to train each tree.
-  * @param numFeatures The user-specified number of features used to train each isolation tree. For certain edge cases,
-  *                    a given isolation tree may not have any nodes using some of these features, e.g., a shallow tree
-  *                    where the number of features in the training data exceeds the number of nodes in the tree.
-  */
+ * A trained isolation tree model. It extends the spark.ml Model class.
+ *
+ * @param uid The immutable unique ID for the model.
+ * @param isolationTrees The array of isolation tree models that compose the isolation forest.
+ * @param numSamples The number of samples used to train each tree.
+ * @param numFeatures The user-specified number of features used to train each isolation tree. For certain edge cases,
+ *                    a given isolation tree may not have any nodes using some of these features, e.g., a shallow tree
+ *                    where the number of features in the training data exceeds the number of nodes in the tree.
+ */
 class IsolationForestModel(
   override val uid: String,
   val isolationTrees: Array[IsolationTree],
@@ -55,12 +55,12 @@ class IsolationForestModel(
   }
 
   /**
-    * Scores new data instances using the trained isolation forest model.
-    *
-    * @param data The input DataFrame of data to be scored. It must have a column $(featuresCol)
-    *             that contains a the feature vector for each data instance.
-    * @return The same DataFrame with $(predictionCol) and $(scoreCol) appended.
-    */
+   * Scores new data instances using the trained isolation forest model.
+   *
+   * @param data The input DataFrame of data to be scored. It must have a column $(featuresCol)
+   *             that contains a the feature vector for each data instance.
+   * @return The same DataFrame with $(predictionCol) and $(scoreCol) appended.
+   */
   override def transform(data: Dataset[_]): DataFrame = {
 
     transformSchema(data.schema, logging = true)
@@ -88,15 +88,15 @@ class IsolationForestModel(
   }
 
   /**
-    * Validates the input schema and transforms it into the output schema. It validates that the
-    * input DataFrame has a $(featuresCol) of the correct type and appends the output columns to
-    * the input schema. It also ensures that the input DataFrame does not already have
-    * $(predictionCol) or $(scoreCol) columns, as they will be created during the fitting process.
-    *
-    * @param schema The schema of the DataFrame containing the data to be fit.
-    * @return The schema of the DataFrame containing the data to be fit, with the additional
-    *         $(predictionCol) and $(scoreCol) columns added.
-    */
+   * Validates the input schema and transforms it into the output schema. It validates that the
+   * input DataFrame has a $(featuresCol) of the correct type and appends the output columns to
+   * the input schema. It also ensures that the input DataFrame does not already have
+   * $(predictionCol) or $(scoreCol) columns, as they will be created during the fitting process.
+   *
+   * @param schema The schema of the DataFrame containing the data to be fit.
+   * @return The schema of the DataFrame containing the data to be fit, with the additional
+   *         $(predictionCol) and $(scoreCol) columns added.
+   */
   override def transformSchema(schema: StructType): StructType = {
 
     require(schema.fieldNames.contains($(featuresCol)),
@@ -117,33 +117,33 @@ class IsolationForestModel(
   }
 
   /**
-    * Returns an IsolationForestModelWriter instance that can be used to write the isolation forest
-    * to disk.
-    *
-    * @return An IsolationForestModelWriter instance.
-    */
+   * Returns an IsolationForestModelWriter instance that can be used to write the isolation forest
+   * to disk.
+   *
+   * @return An IsolationForestModelWriter instance.
+   */
   override def write: MLWriter = new IsolationForestModelReadWrite.IsolationForestModelWriter(this)
 }
 
 /**
-  * Companion object to the IsolationForestModel class.
-  */
+ * Companion object to the IsolationForestModel class.
+ */
 case object IsolationForestModel extends MLReadable[IsolationForestModel] {
 
   /**
-    * Returns an IsolationForestModelReader instance that can be used to read a saved isolation
-    * forest from disk.
-    *
-    * @return An IsolationForestModelReader instance.
-    */
+   * Returns an IsolationForestModelReader instance that can be used to read a saved isolation
+   * forest from disk.
+   *
+   * @return An IsolationForestModelReader instance.
+   */
   override def read: MLReader[IsolationForestModel] =
     new IsolationForestModelReadWrite.IsolationForestModelReader
 
   /**
-    * Loads a saved isolation forest model from disk. A shortcut of `read.load(path)`.
-    *
-    * @param path The path to the saved isolation forest model.
-    * @return The loaded IsolationForestModel instance.
-    */
+   * Loads a saved isolation forest model from disk. A shortcut of `read.load(path)`.
+   *
+   * @param path The path to the saved isolation forest model.
+   * @return The loaded IsolationForestModel instance.
+   */
   override def load(path: String): IsolationForestModel = super.load(path)
 }

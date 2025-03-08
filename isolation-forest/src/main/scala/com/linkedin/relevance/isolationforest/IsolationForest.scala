@@ -14,10 +14,10 @@ import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
 
 
 /**
-  * Used to train an isolation forest model. It extends the spark.ml Estimator class.
-  *
-  * @param uid The immutable unique ID for the model.
-  */
+ * Used to train an isolation forest model. It extends the spark.ml Estimator class.
+ *
+ * @param uid The immutable unique ID for the model.
+ */
 class IsolationForest(override val uid: String) extends Estimator[IsolationForestModel]
   with IsolationForestParamsBase with DefaultParamsWritable with Logging {
 

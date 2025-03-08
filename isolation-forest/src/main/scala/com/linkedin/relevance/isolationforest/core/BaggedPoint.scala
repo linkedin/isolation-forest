@@ -15,17 +15,17 @@ import scala.util.Random
 
 
 /**
-  * Internal representation of a datapoint which belongs to several subsamples of the same dataset,
-  * particularly for bagging (e.g., for random forests).
-  *
-  * This holds one instance, as well as an array of weights which represent the (weighted)
-  * number of times which this instance appears in each subsamplingRate.
-  * E.g., (datum, [1, 0, 4]) indicates that there are 3 subsamples of the dataset and that
-  * this datum has 1 copy, 0 copies, and 4 copies in the 3 subsamples, respectively.
-  *
-  * @param datum Data instance.
-  * @param subsampleWeights Weight of this instance in each subsampled dataset.
-  */
+ * Internal representation of a datapoint which belongs to several subsamples of the same dataset,
+ * particularly for bagging (e.g., for random forests).
+ *
+ * This holds one instance, as well as an array of weights which represent the (weighted)
+ * number of times which this instance appears in each subsamplingRate.
+ * E.g., (datum, [1, 0, 4]) indicates that there are 3 subsamples of the dataset and that
+ * this datum has 1 copy, 0 copies, and 4 copies in the 3 subsamples, respectively.
+ *
+ * @param datum Data instance.
+ * @param subsampleWeights Weight of this instance in each subsampled dataset.
+ */
 private[isolationforest] case class BaggedPoint[Datum](datum: Datum, subsampleWeights: Array[Double])
   extends Serializable {
 
@@ -33,13 +33,13 @@ private[isolationforest] case class BaggedPoint[Datum](datum: Datum, subsampleWe
     " must be >=0")
 
   /**
-    * This constructor creates a BaggedPoint record, and generates its samples.
-    *
-    * @param datum Data instance.
-    * @param subsamplingRate Fraction of the training data used for learning decision tree.
-    * @param numSubsamples Number of subsamples of this RDD to take.
-    * @param randomState AbstractIntegerDistribution instance used to draw random samples.
-    */
+   * This constructor creates a BaggedPoint record, and generates its samples.
+   *
+   * @param datum Data instance.
+   * @param subsamplingRate Fraction of the training data used for learning decision tree.
+   * @param numSubsamples Number of subsamples of this RDD to take.
+   * @param randomState AbstractIntegerDistribution instance used to draw random samples.
+   */
   def this(
     datum: Datum,
     subsamplingRate: Double,
@@ -54,16 +54,16 @@ private[isolationforest] case class BaggedPoint[Datum](datum: Datum, subsampleWe
 }
 
 /**
-  * Companion object for BaggedPoint for defining constructors that create the subsampleWeights.
-  */
+ * Companion object for BaggedPoint for defining constructors that create the subsampleWeights.
+ */
 private[isolationforest] case object BaggedPoint {
 
   /**
-    * Enforces the parameter constraints for BaggedPoint constructors.
-    *
-    * @param subsamplingRate Fraction of the training data used for learning decision tree.
-    * @param numSubsamples Number of subsamples of this RDD to take.
-    */
+   * Enforces the parameter constraints for BaggedPoint constructors.
+   *
+   * @param subsamplingRate Fraction of the training data used for learning decision tree.
+   * @param numSubsamples Number of subsamples of this RDD to take.
+   */
   private def enforceRequirements(subsamplingRate: Double, numSubsamples: Int): Unit = {
     require(subsamplingRate > 0 && subsamplingRate <= 1, "parameter subsamplingRate must be in" +
       s" the range 0 < subsamplingRate <= 1, but has value of ${subsamplingRate}.")
@@ -72,16 +72,16 @@ private[isolationforest] case object BaggedPoint {
   }
 
   /**
-    * Convert an input dataset into its BaggedPoint representation, choosing subsamplingRate counts
-    * for each instance.
-    *
-    * @param input Input dataset.
-    * @param subsamplingRate Fraction of the training data used for learning decision tree.
-    * @param numSubsamples Number of subsamples of this RDD to take.
-    * @param withReplacement Sampling with/without replacement.
-    * @param seed Random seed.
-    * @return BaggedPoint dataset representation.
-    */
+   * Convert an input dataset into its BaggedPoint representation, choosing subsamplingRate counts
+   * for each instance.
+   *
+   * @param input Input dataset.
+   * @param subsamplingRate Fraction of the training data used for learning decision tree.
+   * @param numSubsamples Number of subsamples of this RDD to take.
+   * @param withReplacement Sampling with/without replacement.
+   * @param seed Random seed.
+   * @return BaggedPoint dataset representation.
+   */
   def convertToBaggedRDD[Datum](
     input: RDD[Datum],
     subsamplingRate: Double,

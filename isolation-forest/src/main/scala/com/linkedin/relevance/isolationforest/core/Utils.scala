@@ -1,8 +1,8 @@
 package com.linkedin.relevance.isolationforest.core
 
 /**
-  * Useful utilities.
-  */
+ * Useful utilities.
+ */
 private[isolationforest] object Utils extends Serializable {
 
   case class DataPoint(features: Array[Float])
@@ -12,12 +12,12 @@ private[isolationforest] object Utils extends Serializable {
   val EulerConstant = 0.5772156649f
 
   /**
-    * Returns the average path length for an unsuccessful BST search. It is Equation 1 in the 2008
-    * "Isolation Forest" paper by F. T. Liu, et al.
-    *
-    * @param numInstances The number of data points in the root node of the BST.
-    * @return The average path length of an unsuccessful BST search.
-    */
+   * Returns the average path length for an unsuccessful BST search. It is Equation 1 in the 2008
+   * "Isolation Forest" paper by F. T. Liu, et al.
+   *
+   * @param numInstances The number of data points in the root node of the BST.
+   * @return The average path length of an unsuccessful BST search.
+   */
   def avgPathLength(numInstances: Long): Float = {
 
     if (numInstances <= 1) {
