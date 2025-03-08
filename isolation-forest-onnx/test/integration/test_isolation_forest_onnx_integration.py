@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import pytest
-# from pathlib import Path
+from pathlib import Path
 from onnxruntime import InferenceSession
 from isolationforestonnx.isolation_forest_converter import IsolationForestConverter
 
@@ -15,10 +15,10 @@ SCALA_VERSION_SHORT = os.environ.get("SCALA_VERSION_SHORT")
 #     not SPARK_VERSION or not SCALA_VERSION_SHORT,
 #     reason="Requires SPARK_VERSION and SCALA_VERSION_SHORT environment variables."
 # )
-# @pytest.mark.skipif(
-#     not (Path(BASE_PATH + "/model").exists() and Path(BASE_PATH + "/scored").exists()),
-#     reason="No exported model or scored data found"
-# )
+@pytest.mark.skipif(
+    not (Path(BASE_PATH + "/model").exists() and Path(BASE_PATH + "/scored").exists()),
+    reason="No exported model or scored data found"
+)
 def test_isolation_forest_onnx_integration_end_to_end():
     """
     This is the second part of the end-to-end integration test. The first part is in
