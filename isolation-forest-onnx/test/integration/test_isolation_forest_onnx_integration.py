@@ -11,14 +11,14 @@ SPARK_VERSION = os.environ.get("SPARK_VERSION")
 SCALA_VERSION_SHORT = os.environ.get("SCALA_VERSION_SHORT")
 
 
-@pytest.mark.skipif(
-    not os.environ.get("SPARK_VERSION") or not os.environ.get("SCALA_VERSION_SHORT"),
-    reason="Requires SPARK_VERSION and SCALA_VERSION_SHORT environment variables."
-)
-@pytest.mark.skipif(
-    not (Path(BASE_PATH + "/model").exists() and Path(BASE_PATH + "/scored").exists()),
-    reason="No exported model or scored data found"
-)
+# @pytest.mark.skipif(
+#     not os.environ.get("SPARK_VERSION") or not os.environ.get("SCALA_VERSION_SHORT"),
+#     reason="Requires SPARK_VERSION and SCALA_VERSION_SHORT environment variables."
+# )
+# @pytest.mark.skipif(
+#     not (Path(BASE_PATH + "/model").exists() and Path(BASE_PATH + "/scored").exists()),
+#     reason="No exported model or scored data found"
+# )
 def test_isolation_forest_onnx_integration_end_to_end():
     """
     This is the second part of the end-to-end integration test. The first part is in
