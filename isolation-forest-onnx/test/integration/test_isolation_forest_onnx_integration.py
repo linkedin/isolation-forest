@@ -7,7 +7,6 @@ from isolationforestonnx.isolation_forest_converter import IsolationForestConver
 
 SPARK_VERSION = os.environ.get("SPARK_VERSION")
 SCALA_VERSION_SHORT = os.environ.get("SCALA_VERSION_SHORT")
-BASE_PATH = "/tmp/isolationForestModelAndDataForONNX" + "_" + SPARK_VERSION + "_" + SCALA_VERSION_SHORT
 
 
 def test_isolation_forest_onnx_integration_end_to_end():
@@ -18,8 +17,10 @@ def test_isolation_forest_onnx_integration_end_to_end():
     between Spark and ONNX.
     """
 
-    model_path = os.path.join(BASE_PATH, "model")
-    csv_path = os.path.join(BASE_PATH, "scored")
+    base_path = "/tmp/isolationForestModelAndDataForONNX" + "_" + SPARK_VERSION + "_" + SCALA_VERSION_SHORT
+
+    model_path = os.path.join(base_path, "model")
+    csv_path = os.path.join(base_path, "scored")
 
     # 1) data_dir => find the real Avro
     data_dir = os.path.join(model_path, "data")
