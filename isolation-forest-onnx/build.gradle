@@ -2,6 +2,8 @@ plugins {
     id 'base'
 }
 
+apply from: "$rootDir/gradle/versions.gradle"
+
 def venvDir = file('venv')  // Directory for the virtual environment
 
 task createVersionFile {
@@ -56,6 +58,8 @@ task test(type: Exec) {
 
     dependsOn installDependencies
     environment 'PYTHONPATH', "${projectDir}/src"
+    environment 'SPARK_VERSION', sparkVersion
+    environment 'SCALA_VERSION_SHORT', scalaVersionShort
     commandLine "${venvDir}/bin/python", '-m', 'pytest', 'test', '--junitxml=build/reports/tests/TEST-pytest.xml'
     inputs.dir file("src")
     inputs.dir file("test")
@@ -68,6 +72,8 @@ task runCoverage(type: Exec) {
 
     dependsOn installDependencies
     environment 'PYTHONPATH', "${projectDir}/src"
+    environment 'SPARK_VERSION', sparkVersion
+    environment 'SCALA_VERSION_SHORT', scalaVersionShort
 
     // Define the coverage report directory
     def coverageReportDir = file("${buildDir}/reports/coverage")

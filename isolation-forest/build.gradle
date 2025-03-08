@@ -17,6 +17,8 @@ dependencies {
 
 test {
     useTestNG()
+    environment 'SPARK_VERSION', sparkVersion
+    environment 'SCALA_VERSION_SHORT', scalaVersionShort
 }
 
 archivesBaseName = "${project.name}_${sparkVersion}_${scalaVersionShort}"
