@@ -1,6 +1,6 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
-import TestUtils._
+import com.linkedin.relevance.isolationforest.core.TestUtils._
 import org.testng.Assert
 import org.testng.annotations.Test
 

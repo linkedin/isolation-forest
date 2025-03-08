@@ -1,14 +1,16 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
+import TestUtils._
+import com.linkedin.relevance.isolationforest.{IsolationForest, IsolationForestModel, IsolationTree}
 import com.linkedin.relevance.isolationforest.Nodes.ExternalNode
-import com.linkedin.relevance.isolationforest.TestUtils._
-import java.io.File
-import org.apache.spark.internal.Logging
 import org.apache.commons.io.FileUtils.deleteDirectory
+import org.apache.spark.internal.Logging
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.testng.Assert
 import org.testng.annotations.Test
+
+import java.io.File
 
 
 class IsolationForestModelWriteReadTest extends Logging {

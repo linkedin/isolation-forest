@@ -1,13 +1,14 @@
 package com.linkedin.relevance.isolationforest
 
-import com.linkedin.relevance.isolationforest.TestUtils._
-import java.io.File
+import com.linkedin.relevance.isolationforest.core.TestUtils._
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.scalactic.Tolerance._
 import org.scalactic.TripleEquals._
 import org.testng.Assert
 import org.testng.annotations.Test
+
+import java.io.File
 
 
 class IsolationForestTest {

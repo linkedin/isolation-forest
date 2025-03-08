@@ -1,6 +1,6 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
-import com.linkedin.relevance.isolationforest.Utils.avgPathLength
+import com.linkedin.relevance.isolationforest.core.Utils.avgPathLength
 import org.testng.Assert
 import org.testng.annotations.Test
 

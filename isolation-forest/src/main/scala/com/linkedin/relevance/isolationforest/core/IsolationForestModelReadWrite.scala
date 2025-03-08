@@ -7,24 +7,25 @@
  *
  */
 
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
+import com.linkedin.relevance.isolationforest.{IsolationForestModel, IsolationTree}
 import com.linkedin.relevance.isolationforest.Nodes.{ExternalNode, InternalNode, Node}
 import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.ml.param.{ParamPair, Params}
 import org.apache.spark.ml.util.{MLReader, MLWriter}
-import org.json4s.{DefaultFormats, JObject, JValue}
+import org.apache.spark.sql.SparkSession
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods.{compact, parse, render}
+import org.json4s.{DefaultFormats, JObject, JValue}
 
 
 /**
-  * Contains the IsolationForestModelReader and IsolationForestModelWriter classes and supporting
-  * case classes. A trained IsolationForestModel can be written (read) to (from) HDFS using these
-  * classes.
-  */
+ * Contains the IsolationForestModelReader and IsolationForestModelWriter classes and supporting
+ * case classes. A trained IsolationForestModel can be written (read) to (from) HDFS using these
+ * classes.
+ */
 private[isolationforest] case object IsolationForestModelReadWrite extends Logging {
 
   val NullNodeId: Int = -1
@@ -33,17 +34,17 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   val NullNumInstances: Long = -1
 
   /**
-    * Reads a saved isolation forest model from disk.
-    */
+   * Reads a saved isolation forest model from disk.
+   */
   class IsolationForestModelReader extends MLReader[IsolationForestModel] with Serializable {
 
     /**
-      * Overrides [[org.apache.spark.ml.util.MLReader.load]] in order to load an
-      * [[IsolationForestModel]] instance.
-      *
-      * @param path The path to the saved isolation forest model.
-      * @return The loaded IsolationForestModel instance.
-      */
+     * Overrides [[org.apache.spark.ml.util.MLReader.load]] in order to load an
+     * [[IsolationForestModel]] instance.
+     *
+     * @param path The path to the saved isolation forest model.
+     * @return The loaded IsolationForestModel instance.
+     */
     override def load(path: String): IsolationForestModel = {
 
       implicit val format = DefaultFormats
@@ -65,16 +66,16 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     }
 
     /**
-      * Helper method for loading an isolation tree ensemble from disk. This reconstructs all trees,
-      * returning the root nodes.
-      *
-      * @param path  Path given to `saveImpl`
-      * @param spark The SparkSession object.
-      *
-      * @return (ensemble metadata, array of root nodes each tree), where the root node is linked
-      *         with all descendents
-      * @see `saveImpl` for how the model was saved
-      */
+     * Helper method for loading an isolation tree ensemble from disk. This reconstructs all trees,
+     * returning the root nodes.
+     *
+     * @param path  Path given to `saveImpl`
+     * @param spark The SparkSession object.
+     *
+     * @return (ensemble metadata, array of root nodes each tree), where the root node is linked
+     *         with all descendents
+     * @see `saveImpl` for how the model was saved
+     */
     private def loadImpl(path: String, spark: SparkSession): (Metadata, Array[Node]) = {
 
       import spark.implicits._
@@ -100,12 +101,12 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     }
 
     /**
-      * Builds a binary tree given an array of NodeData instances. The node IDs must
-      * have been assigned via pre-order traversal.
-      *
-      * @param data An Array of NodeData instances.
-      * @return The root node of the resulting binary tree.
-      */
+     * Builds a binary tree given an array of NodeData instances. The node IDs must
+     * have been assigned via pre-order traversal.
+     *
+     * @param data An Array of NodeData instances.
+     * @return The root node of the resulting binary tree.
+     */
     private def buildTreeFromNodes(data: Array[NodeData]): Node = {
 
       val nodes = data.sortBy(_.id)
@@ -136,16 +137,16 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     }
 
     /**
-      * Stores the isolation forest model metadata.
-      *
-      * @param className The name of the saved class.
-      * @param uid The immutable unique ID for the model.
-      * @param timestamp The time when the model was saved.
-      * @param sparkVersion The Spark version used to save the model.
-      * @param params The model paramMap, as a `JValue`.
-      * @param metadata All metadata, including the other fields not in paramMap.
-      * @param metadataJson Full metadata file String (for debugging).
-      */
+     * Stores the isolation forest model metadata.
+     *
+     * @param className The name of the saved class.
+     * @param uid The immutable unique ID for the model.
+     * @param timestamp The time when the model was saved.
+     * @param sparkVersion The Spark version used to save the model.
+     * @param params The model paramMap, as a `JValue`.
+     * @param metadata All metadata, including the other fields not in paramMap.
+     * @param metadataJson Full metadata file String (for debugging).
+     */
     case class Metadata(
       className: String,
       uid: String,
@@ -177,12 +178,12 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     }
 
     /**
-      * Load metadata saved using [[IsolationForestModelWriter.saveMetadata()]].
-      *
-      * @param path The path to the saved metadata.
-      * @param spark The SparkSession instance.
-      * @param expectedClassName If non empty, this is checked against the loaded metadata.
-      */
+     * Load metadata saved using [[IsolationForestModelWriter.saveMetadata()]].
+     *
+     * @param path The path to the saved metadata.
+     * @param spark The SparkSession instance.
+     * @param expectedClassName If non empty, this is checked against the loaded metadata.
+     */
     private def loadMetadata(
       path: String,
       spark: SparkSession,
@@ -195,13 +196,13 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     }
 
     /**
-      * Parse metadata JSON string produced by [[IsolationForestModelWriter.getMetadataToSave()]].
-      * This is a helper for [[IsolationForestModelReader.loadMetadata()]].
-      *
-      * @param metadataStr JSON string of metadata.
-      * @param expectedClassName If non empty, this is checked against the loaded metadata.
-      * @return A [[Metadata]] instance built from the parsed metadata string.
-      */
+     * Parse metadata JSON string produced by [[IsolationForestModelWriter.getMetadataToSave()]].
+     * This is a helper for [[IsolationForestModelReader.loadMetadata()]].
+     *
+     * @param metadataStr JSON string of metadata.
+     * @param expectedClassName If non empty, this is checked against the loaded metadata.
+     * @return A [[Metadata]] instance built from the parsed metadata string.
+     */
     private def parseMetadata(metadataStr: String, expectedClassName: String = ""): Metadata = {
 
       val metadata = parse(metadataStr)
@@ -223,17 +224,17 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   }
 
   /**
-    * Writes a saved isolation forest model to disk.
-    *
-    * @param instance The IsolationForestModel instance to write to disk.
-    */
+   * Writes a saved isolation forest model to disk.
+   *
+   * @param instance The IsolationForestModel instance to write to disk.
+   */
   class IsolationForestModelWriter(instance: IsolationForestModel) extends MLWriter {
 
     /**
-      * Overrides [[org.apache.spark.ml.util.MLWriter.saveImpl]].
-      *
-      * @param path The file path to the directory where the saved model should be written.
-      */
+     * Overrides [[org.apache.spark.ml.util.MLWriter.saveImpl]].
+     *
+     * @param path The file path to the directory where the saved model should be written.
+     */
     override def saveImpl(path: String): Unit = {
 
       val extraMetadata: JObject =
@@ -244,12 +245,12 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     }
 
     /**
-      * Helper method for saving a tree ensemble to disk.
-      *
-      * @param path The path on disk used to save the ensemble model.
-      * @param spark The SparkSession instance to use.
-      * @param extraMetadata Metadata such as outlierScoreThreshold, numSamples, and numFeatures.
-      */
+     * Helper method for saving a tree ensemble to disk.
+     *
+     * @param path The path on disk used to save the ensemble model.
+     * @param spark The SparkSession instance to use.
+     * @param extraMetadata Metadata such as outlierScoreThreshold, numSamples, and numFeatures.
+     */
     private def saveImplHelper(path: String, spark: SparkSession, extraMetadata: JObject): Unit = {
 
       saveMetadata(instance, path, spark, Some(extraMetadata))
@@ -265,13 +266,13 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     }
 
     /**
-      * Writes the spark.ml model metadata and Params values to disk.
-      *
-      * @param instance The spark.ml Model instance to save.
-      * @param path The path on disk used to save the metadata.
-      * @param spark The SparkSession instance to use.
-      * @param extraMetadata Any extra metadata to save in addition to the model Params.
-      */
+     * Writes the spark.ml model metadata and Params values to disk.
+     *
+     * @param instance The spark.ml Model instance to save.
+     * @param path The path on disk used to save the metadata.
+     * @param spark The SparkSession instance to use.
+     * @param extraMetadata Any extra metadata to save in addition to the model Params.
+     */
     private def saveMetadata(
       instance: Params,
       path: String,
@@ -285,13 +286,13 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     }
 
     /**
-      * This is a helper method for [[IsolationForestModelWriter.saveMetadata()]].
-      *
-      * @param instance The spark.ml Model instance to save.
-      * @param spark The SparkSession instance to use.
-      * @param extraMetadata Any extra metadata to save in addition to the model Params.
-      * @return The metadata JSON string.
-      */
+     * This is a helper method for [[IsolationForestModelWriter.saveMetadata()]].
+     *
+     * @param instance The spark.ml Model instance to save.
+     * @param spark The SparkSession instance to use.
+     * @param extraMetadata Any extra metadata to save in addition to the model Params.
+     * @return The metadata JSON string.
+     */
     private def getMetadataToSave(
       instance: Params,
       spark: SparkSession,
@@ -319,17 +320,17 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   }
 
   /**
-    * Stores the serializable data for a [[Node]].
-    *
-    * @param id Node index used for tree reconstruction. Indices follow a pre-order traversal.
-    * @param leftChild Left child node index, or value of -1 if this node is a leaf node.
-    * @param rightChild Right child node index, or value of -1 if this node is a leaf node.
-    * @param splitAttribute The feature upon which the split was performed, or -1 if this node is a
-    *                       leaf node.
-    * @param splitValue The feature value used for the split, or 0.0 if this node is a leaf node.
-    * @param numInstances If this is a leaf node, the number of instances in for this node, or -1 if
-    *                     this is an internal node.
-    */
+   * Stores the serializable data for a [[Node]].
+   *
+   * @param id Node index used for tree reconstruction. Indices follow a pre-order traversal.
+   * @param leftChild Left child node index, or value of -1 if this node is a leaf node.
+   * @param rightChild Right child node index, or value of -1 if this node is a leaf node.
+   * @param splitAttribute The feature upon which the split was performed, or -1 if this node is a
+   *                       leaf node.
+   * @param splitValue The feature value used for the split, or 0.0 if this node is a leaf node.
+   * @param numInstances If this is a leaf node, the number of instances in for this node, or -1 if
+   *                     this is an internal node.
+   */
   case class NodeData(
     id: Int,
     leftChild: Int,
@@ -339,26 +340,26 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     numInstances: Long)
 
   /**
-    * Companion object to the NodeData class.
-    */
+   * Companion object to the NodeData class.
+   */
   case object NodeData {
 
     /**
-      * Serializes a binary tree of [[Node]] instances.
-      *
-      * @param node The head node of the binary tree to be serialized.
-      * @return Serialized sequence of NodeData instances
-      */
+     * Serializes a binary tree of [[Node]] instances.
+     *
+     * @param node The head node of the binary tree to be serialized.
+     * @return Serialized sequence of NodeData instances
+     */
     def build(node: Node): Seq[NodeData] = {
 
       /**
-        * This helper method for [[NodeData.build()]] serializes a binary tree of [[Node]]
-        * instances.
-        *
-        * @param node The head node of the binary tree to be serialized.
-        * @param id Node index used for tree reconstruction. Indices follow a pre-order traversal.
-        * @return (sequence of nodes in pre-order traversal order, largest ID in subtree)
-        */
+       * This helper method for [[NodeData.build()]] serializes a binary tree of [[Node]]
+       * instances.
+       *
+       * @param node The head node of the binary tree to be serialized.
+       * @param id Node index used for tree reconstruction. Indices follow a pre-order traversal.
+       * @return (sequence of nodes in pre-order traversal order, largest ID in subtree)
+       */
       def buildInternal(node: Node, id: Int): (Seq[NodeData], Int) = {
 
         node match {
@@ -395,26 +396,26 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   }
 
   /**
-    * Stores the data for an ensemble of trees constructed of [[Node]]s.
-    *
-    * @param treeID The ID specifying the tree to which this node belongs.
-    * @param nodeData The [[NodeData]] instance containing the information from the corresponding
-    *                 [[Node]] in the tree.
-    */
+   * Stores the data for an ensemble of trees constructed of [[Node]]s.
+   *
+   * @param treeID   The ID specifying the tree to which this node belongs.
+   * @param nodeData The [[NodeData]] instance containing the information from the corresponding
+   *                 [[Node]] in the tree.
+   */
   case class EnsembleNodeData(treeID: Int, nodeData: NodeData)
 
   /**
-    * Companion object to the EnsembleNodeData class.
-    */
+   * Companion object to the EnsembleNodeData class.
+   */
   case object EnsembleNodeData {
 
     /**
-      * Serializes an [[IsolationTree]] instance.
-      *
-      * @param tree The IsolationTree instance to serialize.
-      * @param treeID The ID specifying the index of this isolation tree in the ensemble.
-      * @return A sequence of EnsembleNodeData instances.
-      */
+     * Serializes an [[IsolationTree]] instance.
+     *
+     * @param tree The IsolationTree instance to serialize.
+     * @param treeID The ID specifying the index of this isolation tree in the ensemble.
+     * @return A sequence of EnsembleNodeData instances.
+     */
     def build(tree: IsolationTree, treeID: Int): Seq[EnsembleNodeData] = {
       val nodeData = NodeData.build(tree.node)
       nodeData.map(nodeData => EnsembleNodeData(treeID, nodeData))

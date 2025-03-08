@@ -1,16 +1,8 @@
-import org.gradle.util.VersionNumber
-
 plugins {
     id 'scala'
 }
 
-def scalaVersion = findProperty("scalaVersion") ?: "2.13.14"
-println "Scala version: " + scalaVersion
-// If scalaVersion == "X.Y.Z", then scalaVersionShort == "X.Y".
-def scalaVersionShort = VersionNumber.parse(scalaVersion).getMajor() + "." + VersionNumber.parse(scalaVersion).getMinor()
-
-def sparkVersion = findProperty("sparkVersion") ?: "3.5.1"
-println "Spark version: " + sparkVersion
+apply from: "$rootDir/gradle/versions.gradle"
 
 dependencies {
     implementation("com.chuusai:shapeless_" + scalaVersionShort + ":2.3.12")
@@ -25,6 +17,8 @@ dependencies {
 
 test {
     useTestNG()
+    environment 'SPARK_VERSION', sparkVersion
+    environment 'SCALA_VERSION_SHORT', scalaVersionShort
 }
 
 archivesBaseName = "${project.name}_${sparkVersion}_${scalaVersionShort}"

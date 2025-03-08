@@ -1,12 +1,12 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.core
 
-import org.apache.spark.ml.param.{BooleanParam, DoubleParam, IntParam, LongParam, Param, ParamValidators, Params}
+import org.apache.spark.ml.param._
 
 
 /**
-  * Params for the isolation forest model.
-  */
-trait IsolationForestParams extends Params {
+ * Params for the isolation forest model.
+ */
+trait IsolationForestParamsBase extends Params {
 
   final val numEstimators = new IntParam(this, "numEstimators", "The number of trees in the" +
     " ensemble.", ParamValidators.gt(0.0))
