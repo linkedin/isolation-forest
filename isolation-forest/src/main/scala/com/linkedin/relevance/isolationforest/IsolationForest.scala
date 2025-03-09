@@ -28,7 +28,7 @@ class IsolationForest(override val uid: String)
     with DefaultParamsWritable
     with Logging {
 
-  def this() = this(Identifiable.randomUID("standard-isolation-forest"))
+  def this() = this(Identifiable.randomUID("isolation-forest"))
 
   override def copy(extra: ParamMap): IsolationForest =
 
