@@ -29,6 +29,7 @@ private[isolationforest] case object Nodes {
       "parameter numInstances must be >0, but given invalid value" +
         s" ${numInstances}",
     )
+    override def toString: String = s"ExternalNode(numInstances = $numInstances)"
   }
 
   /**
