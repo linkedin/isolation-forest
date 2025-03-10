@@ -65,9 +65,9 @@ class ExtendedIsolationForest(override val uid: String)
       resolvedParams.numSamples,
       resolvedParams.numFeatures,
       $(randomSeed) + 10 * $(numEstimators),
-      (dataArray: Array[DataPoint], seed: Long, featIdxs: Array[Int]) => {
+      (dataArray: Array[DataPoint], seed: Long, featureIndices: Array[Int]) => {
         // We'll define an inline function that calls ExtendedIsolationTree.fit with extensionLevel
-        ExtendedIsolationTree.fit(dataArray, seed, featIdxs, $(extensionLevel))
+        ExtendedIsolationTree.fit(dataArray, seed, featureIndices, $(extensionLevel))
       }
     )
 
