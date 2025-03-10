@@ -8,14 +8,15 @@ import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
   ExtendedInternalNode,
   ExtendedNode
 }
+import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
 import org.apache.spark.internal.Logging
 
 import scala.annotation.tailrec
 import scala.util.Random
 
 /**
- * Represents a single Extended Isolation Tree, which uses random hyperplanes
- * (splitVector, splitOffset) to split the data at internal nodes.
+ * A single Extended Isolation Tree, which uses random hyperplanes
+ * defined by (splitVector, splitOffset).
  *
  * @param node The root node of this extended isolation tree.
  */
@@ -25,12 +26,8 @@ private[isolationforest] class ExtendedIsolationTree(val node: ExtendedNode)
   /**
    * Calculate the path length from the root node of this extended isolation tree
    * to the leaf that a particular data instance falls into.
-   *
-   * @param dataPoint The feature array for a single data instance.
-   * @return The path length to that instance.
    */
   override def calculatePathLength(dataPoint: DataPoint): Float = {
-
     ExtendedIsolationTree.pathLength(dataPoint, node)
   }
 }
@@ -38,39 +35,33 @@ private[isolationforest] class ExtendedIsolationTree(val node: ExtendedNode)
 private[isolationforest] object ExtendedIsolationTree extends Logging {
 
   /**
-   * Fits (trains) a single extended isolation tree using random hyperplane splits.
-   *
-   * @param data           The array of data points used to train this tree.
-   * @param randomSeed     Random seed used for reproducible hyperplane generation.
-   * @param featureIndices Array of feature-column indices to use for this tree.
-   * @return A trained ExtendedIsolationTree instance.
+   * Trains a single extended isolation tree using random hyperplane splits:
+   *  - We choose extensionLevel+1 non-zero coordinates (clamped to the subspace dimension),
+   *  - fill them with random Gaussian values,
+   *  - compute dot-products of all data points,
+   *  - pick an offset in [minDot, maxDot].
    */
   def fit(
-    data: Array[DataPoint],
-    randomSeed: Long,
-    featureIndices: Array[Int],
-    extensionLevel: Int): ExtendedIsolationTree = {
+           data: Array[DataPoint],
+           randomSeed: Long,
+           featureIndices: Array[Int],
+           extensionLevel: Int
+         ): ExtendedIsolationTree = {
 
-    logInfo(s"Fitting extended isolation tree with random seed $randomSeed on " +
-      s"${data.length} data points and ${featureIndices.length} selected features.")
+    logInfo(s"Fitting extended isolation tree (random seed=$randomSeed) on " +
+      s"${data.length} points, ${featureIndices.length} subspace-dim, extensionLevel=$extensionLevel")
 
     val heightLimit = math.ceil(math.log(data.length.toDouble) / math.log(2.0)).toInt
     val rnd = new Random(randomSeed)
 
-    val root: ExtendedNode = generateExtendedIsolationTree(
-      data,
-      currentHeight = 0,
-      heightLimit,
-      rnd,
-      featureIndices,
-      extensionLevel
+    val root = generateExtendedIsolationTree(
+      data, currentHeight = 0, heightLimit, rnd, featureIndices, extensionLevel
     )
-
     new ExtendedIsolationTree(root)
   }
 
   /**
-   * Recursive function that builds an extended isolation tree using random hyperplanes.
+   * Recursively build the extended isolation tree.
    */
   private def generateExtendedIsolationTree(
     data: Array[DataPoint],
@@ -81,89 +72,96 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
     extensionLevel: Int): ExtendedNode = {
 
     val numInstances = data.length
+    val numFeatures = data.head.features.length
+
     if (currentHeight >= heightLimit || numInstances <= 1) {
+      // Leaf node
       ExtendedExternalNode(numInstances)
     } else {
       val dim = featureIndices.length
+      // We allow up to (extensionLevel+1) coordinates to be non-zero
+      val nNonZero = math.min(extensionLevel + 1, dim)
 
-      // extensionLevel is an Int param set by the user (0 -> standard, up to dim-1 for fully extended)
-      val extensionLevelRaw = extensionLevel + 1
-      
-      // Then pick the final count
-      val nNonZero = math.min(extensionLevelRaw, dim) // clamp so we don't exceed dimension
+      // Build the hyperplane norm vector for the full space
+      val splitVector = Array.fill(numFeatures)(0.0)
 
-      // 1) Create a vector of length dim with all zeros
-      val splitVector = Array.fill(dim)(0.0)
-
-      // 2) Pick nNonZero distinct indices from [0..dim-1]
-      val chosenIndices = rnd.shuffle(featureIndices.indices.toList).take(nNonZero)
-      // or if you'd like to avoid double confusion with "featureIndices of featureIndices", do
-      // val chosenIdxInSubspace = rnd.shuffle((0 until dim).toList).take(nNonZero)
-      // then fill those positions in 'splitVector' with random Gaussians
-
-      // fill with random gaussians
-      chosenIndices.foreach { idx =>
-        // idx is the index in the subspace, so if featureIndices are [3, 5, 7], idx is 0,1,2 => need to interpret carefully
-        // If you want to reference the subspace index, do:
-        splitVector(idx) = rnd.nextGaussian()
+      // Randomly choose which feature indices become non-zero
+      val chosenFeatureIndices = rnd.shuffle((0 until dim).toList).take(nNonZero)
+      chosenFeatureIndices.foreach { i =>
+        splitVector(featureIndices(i)) = rnd.nextGaussian()
       }
 
-      // Then compute dot products etc. as normal
-      val dotProducts = data.map { p =>
-        dot(splitVector, p, featureIndices)
+      // Compute the L2 norm of the vector
+      val squaredSum = splitVector.map(x => x * x).sum
+      val normValue = math.sqrt(squaredSum)
+
+      // Check to ensure the norm is non-zero to avoid division by zero
+      if (normValue == 0) {
+        throw new IllegalArgumentException("Cannot normalize a zero vector.")
       }
+
+      // Normalize the vector
+      val normSplitVector = splitVector.map(_ / normValue)
+
+//      println("\n\n==========================================" +
+//        "\nextensionLevel: " + extensionLevel +
+//        "\nnumFeatures: " + numFeatures +
+//        "\nfeatureIndices: " + featureIndices.mkString(", ") +
+//        "\ndim: " + dim +
+//        "\nnNonZero: " + nNonZero +
+//        "\nchosenFeatureIndices: " + chosenFeatureIndices.mkString(", ") +
+//        "\nsplitVector: " + splitVector.mkString(", ") +
+//        "\nnormSplitVector: " + normSplitVector.mkString(", ") +
+//       "\n===================================================\n\n")
+
+      // Compute dot products in this subspace
+      val dotProducts = data.map(p => dot(normSplitVector, p))
       val minDot = dotProducts.min
       val maxDot = dotProducts.max
 
-      // If all points have the same dot product => leaf
+      // If all dot-values are the same => leaf
       if (minDot == maxDot) {
         ExtendedExternalNode(numInstances)
       } else {
-        // Pick an offset uniformly between [minDot, maxDot]
+        // pick offset uniformly in [minDot, maxDot]
         val splitOffset = rnd.nextDouble() * (maxDot - minDot) + minDot
 
-        // Split data into left / right
-        val (leftData, rightData) = data.partition { p =>
-          dot(splitVector, p, featureIndices) < splitOffset
+        // Partition into left (dot < offset) and right (>= offset)
+        val (leftData, rightData) = data.partition { point =>
+          dot(normSplitVector, point) < splitOffset
         }
-
-        val leftChild = generateExtendedIsolationTree(
-          leftData,
-          currentHeight + 1,
-          heightLimit,
-          rnd,
-          featureIndices,
-          extensionLevel
-        )
-        val rightChild = generateExtendedIsolationTree(
-          rightData,
-          currentHeight + 1,
-          heightLimit,
-          rnd,
-          featureIndices,
-          extensionLevel)
-
-        ExtendedInternalNode(leftChild, rightChild, splitVector, splitOffset)
+        // If one side is empty, we can just treat as leaf
+        if (leftData.isEmpty || rightData.isEmpty) {
+          ExtendedExternalNode(numInstances)
+        } else {
+          // Build children
+          val leftChild = generateExtendedIsolationTree(
+            leftData, currentHeight + 1, heightLimit, rnd, featureIndices, extensionLevel
+          )
+          val rightChild = generateExtendedIsolationTree(
+            rightData, currentHeight + 1, heightLimit, rnd, featureIndices, extensionLevel
+          )
+          ExtendedInternalNode(leftChild, rightChild, SplitHyperplane(normSplitVector, splitOffset))
+        }
       }
     }
   }
 
   /**
-   * Compute the path length for a single data point in an extended isolation tree node.
+   * Compute path length for a single point, recursing until we hit a leaf.
    */
-  private def pathLength(dataInstance: DataPoint, node: ExtendedNode): Float = {
+  private def pathLength(dataPoint: DataPoint, node: ExtendedNode): Float = {
 
     @tailrec
-    def recurse(currNode: ExtendedNode, depth: Float): Float = {
-      currNode match {
+    def recurse(curr: ExtendedNode, depth: Float): Float = {
+      curr match {
         case ExtendedExternalNode(numInstances) =>
-          // Reached leaf => add average path length factor
-          depth + Utils.avgPathLength(numInstances)
+          depth + Utils.avgPathLength(numInstances) // Leaf
 
-        case ExtendedInternalNode(leftChild, rightChild, splitVector, splitOffset) =>
-          val dotVal = dot(splitVector, dataInstance)
-          if (dotVal < splitOffset) recurse(leftChild, depth + 1)
-          else recurse(rightChild, depth + 1)
+        case ExtendedInternalNode(left, right, splitHyperplane) =>
+          val dpVal = dot(splitHyperplane.norm, dataPoint)
+          if (dpVal < splitHyperplane.offset) recurse(left, depth + 1)
+          else recurse(right, depth + 1)
       }
     }
 
@@ -171,43 +169,17 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
   }
 
   /**
-   * Compute dot(splitVector, subsetOfFeatures).
+   * Compute the dot product between the subspace `splitVector` and the data point's selected features.
    *
-   * @param vector          The random hyperplane vector (length = featureIndices.length).
-   * @param point           The data point with many features.
-   * @param featureIndices  Which features from the point to use.
+   * @param splitVector  array of length == featureIndices.length
+   * @param point        data point (float[] features)
    * @return dot product
    */
-  private def dot(
-    vector: Array[Double],
-    point: DataPoint,
-    featureIndices: Array[Int]): Double = {
-
+  private def dot(splitVector: Array[Double], point: DataPoint): Double = {
     var sum = 0.0
     var i = 0
-    while (i < vector.length) {
-      sum += vector(i) * point.features(featureIndices(i))
-      i += 1
-    }
-    sum
-  }
-
-  /**
-   * Compute dot(splitVector, features).
-   *
-   * @param vector The random hyperplane vector.
-   * @param point  The data point with many features.
-   * @return dot product
-   */
-  private def dot(
-    vector: Array[Double],
-    point: DataPoint): Double = {
-
-    var sum = 0.0
-    val limit = math.min(vector.length, point.features.length)
-    var i = 0
-    while (i < limit) {
-      sum += vector(i) * point.features(i)
+    while (i < splitVector.length) {
+      sum += splitVector(i) * point.features(i)
       i += 1
     }
     sum
