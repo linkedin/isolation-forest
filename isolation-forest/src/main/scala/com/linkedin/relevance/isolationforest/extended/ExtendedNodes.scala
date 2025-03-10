@@ -1,11 +1,12 @@
 package com.linkedin.relevance.isolationforest.extended
 
+import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
 import com.linkedin.relevance.isolationforest.core.NodesBase.{ExternalNodeBase, InternalNodeBase, NodeBase}
 
 /**
  * Contains the node classes used to construct extended isolation trees.
  * An extended isolation tree splits data using a random hyperplane,
- * defined by (splitVector, splitOffset).
+ * defined by SplitHyperplane.
  */
 private[isolationforest] case object ExtendedNodes {
 
@@ -24,33 +25,30 @@ private[isolationforest] case object ExtendedNodes {
     extends ExtendedNode with ExternalNodeBase {
 
     require(numInstances > 0, s"parameter numInstances must be > 0, but given invalid value $numInstances")
+
+    override def toString: String = s"ExtendedExternalNode(numInstances = $numInstances)"
   }
 
   /**
    * An internal node in an extended isolation tree.
-   * It splits data points by computing a dot product with splitVector,
+   * It splits data points by computing a dot product with the norm of splitHyperplane,
    * then comparing it to splitOffset.
    *
-   * @param splitVector The vector defining the hyperplane that splits the data at this node.
-   * @param splitOffset The offset for the hyperplane.
    * @param leftChild   The left child node (data points with dot < splitOffset).
    * @param rightChild  The right child node (data points with dot >= splitOffset).
+   * @param splitHyperplane The norm vector and offset defining the hyperplane that
+   *                        splits the data at this node.
    */
   case class ExtendedInternalNode(
     leftChild: ExtendedNode,
     rightChild: ExtendedNode,
-    splitVector: Array[Double],
-    splitOffset: Double) extends ExtendedNode with InternalNodeBase {
+    splitHyperplane: SplitHyperplane) extends ExtendedNode with InternalNodeBase {
 
     // Depth is 1 + max of children
     override val subtreeDepth: Int = 1 + math.max(leftChild.subtreeDepth, rightChild.subtreeDepth)
-
-    require(splitVector.nonEmpty, "splitVector must be non-empty for an internal node.")
-
     override def toString: String =
       s"ExtendedInternalNode(" +
-        s"splitVector=${splitVector.mkString("Array(", ", ", ")")}," +
-        s" splitOffset=$splitOffset," +
+        s"splitHyperplane=${splitHyperplane}" +
         s" leftChild=($leftChild), rightChild=($rightChild))"
   }
 }
