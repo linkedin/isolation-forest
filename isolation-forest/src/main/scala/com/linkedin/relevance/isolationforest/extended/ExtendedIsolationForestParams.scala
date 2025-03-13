@@ -21,7 +21,7 @@ trait ExtendedIsolationForestParams extends IsolationForestParamsBase {
     this,
     "extensionLevel",
     "Extension level for the random hyperplane. extensionLevel+1 = number of non-zero coordinates." +
-    " 0 => standard iForest splits, dimensionOfSubspace => fully extended splits",
+    " 0 => standard iForest splits, dimensionOfSubspace-1 => fully extended splits",
     ParamValidators.gtEq(0)
   )
   def setExtensionLevel(value: Int): this.type = set(extensionLevel, value)
