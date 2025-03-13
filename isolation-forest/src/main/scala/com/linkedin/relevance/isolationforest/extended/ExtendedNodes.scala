@@ -31,8 +31,6 @@ private[isolationforest] case object ExtendedNodes {
 
   /**
    * An internal node in an extended isolation tree.
-   * It splits data points by computing a dot product with the norm of splitHyperplane,
-   * then comparing it to splitOffset.
    *
    * @param leftChild   The left child node (data points with dot < splitOffset).
    * @param rightChild  The right child node (data points with dot >= splitOffset).
