@@ -1,22 +1,18 @@
 package com.linkedin.relevance.isolationforest.extended
 
-import com.linkedin.relevance.isolationforest.core.SharedTrainLogic.{
-  computeAndSetModelThreshold,
-  createSampledPartitionedDataset,
-  trainIsolationTrees
-}
-import com.linkedin.relevance.isolationforest.core.Utils
-import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
+import com.linkedin.relevance.isolationforest.core.SharedTrainLogic.{computeAndSetModelThreshold, createSampledPartitionedDataset, trainIsolationTrees}
+import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, ResolvedParams}
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.Estimator
-import org.apache.spark.ml.linalg.{SQLDataTypes, Vector}
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
 
 /**
- * Estimator for an Extended Isolation Forest.
+ * Used to train an extended isolation forest model. It extends the spark.ml Estimator class.
  *
  * This uses random hyperplanes (rather than single-feature splits) to isolate outliers.
  */
@@ -35,23 +31,27 @@ class ExtendedIsolationForest(override val uid: String)
   /**
    * Fits an extended isolation forest model given an input dataset of features.
    *
-   * @param dataset The input dataset, which must contain a column $(featuresCol) of ML vectors.
+   * @param data The input dataset, which must contain a column $(featuresCol) of Vectors.
    */
-  override def fit(dataset: Dataset[_]): ExtendedIsolationForestModel = {
+  override def fit(data: Dataset[_]): ExtendedIsolationForestModel = {
 
-    transformSchema(dataset.schema, logging = true)
+    import data.sparkSession.implicits._
 
-    import dataset.sparkSession.implicits._
+    // Validate schema, extract features column, and convert to Dataset
+    transformSchema(data.schema, logging = true)
 
-    val df = dataset.toDF()
-    val points = df.map(row => DataPoint(row.getAs[Vector]($(featuresCol)).toArray.map(_.toFloat)))
+    val df = data.toDF()
+    val dataset = df.map(row =>
+      DataPoint(row.getAs[Vector]($(featuresCol)).toArray.map(x => x.toFloat)))
 
-    // Validate user params and figure out how many samples & features to actually use
-    val resolvedParams = validateAndResolveParams(points)
+    // Validate $(maxFeatures) and $(maxSamples) against input dataset and determine the values
+    // actually used to train the model: numFeatures and numSamples
+    val resolvedParams = validateAndResolveParams(dataset)
 
-    // Bagging: sample data for each tree
-    val partitionedDataset = createSampledPartitionedDataset(
-      points,
+    // Bag and flatten the data, then repartition it so that each partition corresponds to one
+    // isolation tree.
+    val repartitionedFlattenedSampledDataset = createSampledPartitionedDataset(
+      dataset,
       resolvedParams.numSamples,
       resolvedParams.totalNumSamples,
       $(numEstimators),
@@ -59,94 +59,122 @@ class ExtendedIsolationForest(override val uid: String)
       $(randomSeed)
     )
 
-    // Train extended isolation trees
-    val trees = trainIsolationTrees[ExtendedIsolationTree](
-      partitionedDataset,
+    // Train an isolation tree on each subset of data.
+    val extendedIsolationTrees = trainIsolationTrees[ExtendedIsolationTree](
+      repartitionedFlattenedSampledDataset,
       resolvedParams.numSamples,
       resolvedParams.numFeatures,
-      $(randomSeed) + 10 * $(numEstimators),
+      $(randomSeed) + 2 * (dataset.rdd.getNumPartitions + 1),
       (dataArray: Array[DataPoint], seed: Long, featureIndices: Array[Int]) => {
         // We'll define an inline function that calls ExtendedIsolationTree.fit with extensionLevel
         ExtendedIsolationTree.fit(dataArray, seed, featureIndices, $(extensionLevel))
       }
     )
 
-    val model = copyValues(
+    // Create the ExtendedIsolationForestModel instance and set the parent.
+    val extendedIsolationForestModel = copyValues(
       new ExtendedIsolationForestModel(
         uid,
-        trees,
+        extendedIsolationTrees,
         resolvedParams.numSamples,
         resolvedParams.numFeatures
       ).setParent(this)
     )
 
-    // If contamination > 0, approximate a threshold
+    // Determine and set the model threshold based upon the specified contamination and
+    // contaminationError parameters.
     computeAndSetModelThreshold(
-      model,
+      extendedIsolationForestModel,
       df,
       $(scoreCol),
       $(contamination),
       $(contaminationError)
     )
 
-    model
+    extendedIsolationForestModel
   }
 
   /**
-   * Validate the input schema, ensuring $(featuresCol) is present and is a Vector.
-   * Ensure that $(predictionCol) and $(scoreCol) do not already exist.
+   * Validates the input schema and transforms it into the output schema. It validates that the
+   * input DataFrame has a $(featuresCol) of the correct type and appends the output columns to
+   * the input schema. It also ensures that the input DataFrame does not already have
+   * $(predictionCol) or $(scoreCol) columns, as they will be created during the fitting process.
+   *
+   * @param schema The schema of the DataFrame containing the data to be fit.
+   * @return The schema of the DataFrame containing the data to be fit, with the additional
+   *         $(predictionCol) and $(scoreCol) columns added.
    */
   override def transformSchema(schema: StructType): StructType = {
+
     require(schema.fieldNames.contains($(featuresCol)),
       s"Input column ${$(featuresCol)} does not exist.")
-    require(schema($(featuresCol)).dataType == SQLDataTypes.VectorType,
-      s"Input column ${$(featuresCol)} must be VectorType.")
+    require(schema($(featuresCol)).dataType == VectorType,
+      s"Input column ${$(featuresCol)} is not of required type ${VectorType}")
 
     require(!schema.fieldNames.contains($(predictionCol)),
       s"Output column ${$(predictionCol)} already exists.")
     require(!schema.fieldNames.contains($(scoreCol)),
       s"Output column ${$(scoreCol)} already exists.")
 
-    val fieldsPlus = schema.fields :+
+    val outputFields = schema.fields :+
       StructField($(predictionCol), DoubleType, nullable = false) :+
       StructField($(scoreCol), DoubleType, nullable = false)
 
-    StructType(fieldsPlus)
+    StructType(outputFields)
   }
 
   /**
-   * Helper to figure out how many samples/features to use from the dataset
-   * given the user-specified maxSamples/maxFeatures.
+   * Private helper to validate parameters and figure out how many features and samples we'll use.
+   *
+   * @param dataset The input dataset.
+   * @return A ResolvedParams instance containing the resolved values.
    */
-  private def validateAndResolveParams(points: Dataset[DataPoint]): Utils.ResolvedParams = {
-    val totalNumFeatures = points.head().features.length
-    val totalNumSamples = points.count()
+  private def validateAndResolveParams(dataset: Dataset[DataPoint]): ResolvedParams = {
 
-    val actualNumFeatures =
-      if (getMaxFeatures > 1.0) math.floor(getMaxFeatures).toInt
-      else math.floor(getMaxFeatures * totalNumFeatures).toInt
+    // Validate $(maxFeatures) and $(maxSamples) against input dataset and determine the values
+    // actually used to train the model: numFeatures and numSamples.
+    val totalNumFeatures = dataset.head().features.length
+    val numFeatures = if ($(maxFeatures) > 1.0) {
+      math.floor($(maxFeatures)).toInt
+    } else {
+      math.floor($(maxFeatures) * totalNumFeatures).toInt
+    }
+    logInfo(s"User specified number of features used to train each tree over total number of" +
+      s" features: ${numFeatures} / ${totalNumFeatures}")
+    require(numFeatures > 0, s"parameter maxFeatures given invalid value ${$(maxFeatures)}" +
+      s" specifying the use of ${numFeatures} features, but >0 features are required.")
+    require(numFeatures <= totalNumFeatures, s"parameter maxFeatures given invalid value" +
+      s" ${$(maxFeatures)} specifying the use of ${numFeatures} features, but only" +
+      s" ${totalNumFeatures} features are available.")
 
-    require(actualNumFeatures > 0 && actualNumFeatures <= totalNumFeatures,
-      s"Invalid maxFeatures=${getMaxFeatures}, specifying $actualNumFeatures features, " +
-        s"but dataset only has $totalNumFeatures features.")
+    val totalNumSamples = dataset.count()
+    val numSamples = if ($(maxSamples) > 1.0) {
+      math.floor($(maxSamples)).toInt
+    } else {
+      math.floor($(maxSamples) * totalNumSamples).toInt
+    }
+    logInfo(s"User specified number of samples used to train each tree over total number of" +
+      s" samples: ${numSamples} / ${totalNumSamples}")
+    require(numSamples > 0, s"parameter maxSamples given invalid value ${$(maxSamples)}" +
+      s" specifying the use of ${numSamples} samples, but >0 samples are required.")
+    require(numSamples <= totalNumSamples, s"parameter maxSamples given invalid value" +
+      s" ${$(maxSamples)} specifying the use of ${numSamples} samples, but only" +
+      s" ${totalNumSamples} samples are in the input dataset.")
 
-    val actualNumSamples =
-      if (getMaxSamples > 1.0) math.floor(getMaxSamples).toInt
-      else math.floor(getMaxSamples * totalNumSamples).toInt
-
-    require(actualNumSamples > 0 && actualNumSamples <= totalNumSamples,
-      s"Invalid maxSamples=${getMaxSamples}, specifying $actualNumSamples samples, " +
-        s"but dataset has $totalNumSamples total rows.")
-
-    Utils.ResolvedParams(
-      numFeatures = actualNumFeatures,
-      totalNumFeatures = totalNumFeatures,
-      numSamples = actualNumSamples,
-      totalNumSamples = totalNumSamples
-    )
+    ResolvedParams(numFeatures, totalNumFeatures, numSamples, totalNumSamples)
   }
 }
 
+/**
+ * Companion object to the ExtendedIsolationForest class.
+ */
 object ExtendedIsolationForest extends DefaultParamsReadable[ExtendedIsolationForest] {
+
+  /**
+   * Loads a saved ExtendedIsolationForest Estimator ML instance.
+   *
+   * @param path Path to the saved ExtendedIsolationForest Estimator ML instance directory.
+   * @return The saved ExtendedIsolationForest Estimator ML instance.
+   */
   override def load(path: String): ExtendedIsolationForest = super.load(path)
 }
