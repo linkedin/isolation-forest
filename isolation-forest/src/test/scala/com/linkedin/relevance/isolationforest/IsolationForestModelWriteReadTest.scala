@@ -1,8 +1,7 @@
-package com.linkedin.relevance.isolationforest.core
+package com.linkedin.relevance.isolationforest
 
-import TestUtils._
-import com.linkedin.relevance.isolationforest.{IsolationForest, IsolationForestModel, IsolationTree}
 import com.linkedin.relevance.isolationforest.Nodes.ExternalNode
+import com.linkedin.relevance.isolationforest.core.TestUtils.{LabeledDataPointVector, ScoringResult, getSparkSession, loadMammographyData}
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.feature.VectorAssembler
