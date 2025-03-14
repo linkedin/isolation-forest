@@ -1,10 +1,7 @@
 package com.linkedin.relevance.isolationforest
 
 import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, avgPathLength}
-import com.linkedin.relevance.isolationforest.core.{
-  IsolationForestModelReadWrite,
-  IsolationForestParamsBase,
-}
+import com.linkedin.relevance.isolationforest.core.IsolationForestParamsBase
 import org.apache.spark.ml.Model
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
