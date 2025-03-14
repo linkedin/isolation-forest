@@ -1,4 +1,4 @@
-package com.linkedin.relevance.isolationforest.core
+package com.linkedin.relevance.isolationforest
 
 import com.linkedin.relevance.isolationforest.core.IsolationForestModelReadWriteUtils.{
   EnsembleNodeData,
