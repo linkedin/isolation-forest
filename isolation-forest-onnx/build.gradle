@@ -127,5 +127,5 @@ clean {
 // Define task dependencies
 check.dependsOn test, runFlake8, runCoverage, runMypy
 build.dependsOn buildPythonPackage
-test.dependsOn(":isolation-forest:build")
-runCoverage.dependsOn(":isolation-forest:build")
+test.dependsOn(":isolation-forest:test")
+runCoverage.dependsOn(":isolation-forest:test")
