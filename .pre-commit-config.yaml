@@ -27,7 +27,7 @@ repos:
         files: '^isolation-forest-onnx/.*\.py$'
 
   # -----------------------
-  # Spark (Scala)
+  # Scala (isolation-forest)
   # Install:
   #   brew install coursier/formulas/coursier
   #   coursier install scalafmt
