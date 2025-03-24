@@ -3,8 +3,8 @@ package com.linkedin.relevance.isolationforest.core
 private[isolationforest] case object NodesBase {
 
   /**
-   * A minimal trait capturing what every "node" must define.
-   * Both standard and extended trees will implement this trait.
+   * A minimal trait capturing what every "node" must define. Both standard and extended trees will
+   * implement this trait.
    */
   trait NodeBase extends Serializable {
 
@@ -13,8 +13,8 @@ private[isolationforest] case object NodesBase {
   }
 
   /**
-   * A trait capturing a "leaf node" concept:
-   * typically has a count of how many training points landed here.
+   * A trait capturing a "leaf node" concept: typically has a count of how many training points
+   * landed here.
    */
   trait ExternalNodeBase extends NodeBase {
 
@@ -26,11 +26,11 @@ private[isolationforest] case object NodesBase {
   }
 
   /**
-   * A trait capturing an "internal node" concept:
-   * typically has leftChild, rightChild, plus a subtreeDepth that depends on them.
+   * A trait capturing an "internal node" concept: typically has leftChild, rightChild, plus a
+   * subtreeDepth that depends on them.
    *
-   * Note that we do NOT finalize the fields here, because standard vs extended
-   * might have different node types.
+   * Note that we do NOT finalize the fields here, because standard vs extended might have different
+   * node types.
    */
   trait InternalNodeBase extends NodeBase {
 

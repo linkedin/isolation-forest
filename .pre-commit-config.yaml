@@ -1,0 +1,44 @@
+repos:
+  # -----------------------
+  # Python (isolation-forest-onnx)
+  # -----------------------
+  - repo: https://github.com/psf/black
+    rev: 25.1.0  # or latest
+    hooks:
+      - id: black
+        name: black-isolation-forest-onnx
+        files: ^isolation-forest-onnx/.*\.py$
+        args: ["--config=isolation-forest-onnx/pyproject.toml"]
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.11.0
+    hooks:
+      - id: ruff
+        name: ruff-isolation-forest-onnx
+        args: ["--fix"]
+        files: '^isolation-forest-onnx/.*\.py$'
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.1.2
+    hooks:
+      - id: flake8
+        name: flake8-isolation-forest-onnx
+        args: ["--config=isolation-forest-onnx/setup.cfg", "isolation-forest-onnx/"]
+        files: '^isolation-forest-onnx/.*\.py$'
+
+  # -----------------------
+  # Spark (Scala)
+  # Install:
+  #   brew install coursier/formulas/coursier
+  #   coursier install scalafmt
+  # -----------------------
+  - repo: local
+    hooks:
+      - id: scalafmt-isolation-forest
+        name: scalafmt-isolation-forest
+        language: system
+        entry: scalafmt
+        pass_filenames: true
+        files: ^isolation-forest/.*\.scala$
+        args: ["--config=isolation-forest/scalafmt.conf"]
+

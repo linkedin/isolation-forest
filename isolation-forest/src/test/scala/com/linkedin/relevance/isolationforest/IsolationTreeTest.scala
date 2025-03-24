@@ -6,7 +6,6 @@ import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
 import org.testng.Assert
 import org.testng.annotations.Test
 
-
 class IsolationTreeTest {
 
   @Test(description = "generateIsolationTreeTest")
@@ -14,7 +13,7 @@ class IsolationTreeTest {
 
     val data = readCsv("src/test/resources/shuttle.csv")
 
-    val dataArray = data.map(x => DataPoint(x.slice(0, data.head.length - 1)))  // Drop labels column
+    val dataArray = data.map(x => DataPoint(x.slice(0, data.head.length - 1))) // Drop labels column
 
     val heightLimit = 15
     val randomState = new scala.util.Random(1)

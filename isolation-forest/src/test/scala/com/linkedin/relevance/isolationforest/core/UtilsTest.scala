@@ -4,7 +4,6 @@ import com.linkedin.relevance.isolationforest.core.Utils.avgPathLength
 import org.testng.Assert
 import org.testng.annotations.Test
 
-
 class UtilsTest {
 
   @Test(description = "avgPathLengthMethodTest")

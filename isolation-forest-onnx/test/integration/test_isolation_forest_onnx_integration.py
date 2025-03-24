@@ -17,7 +17,13 @@ def test_isolation_forest_onnx_integration_end_to_end():
     between Spark and ONNX.
     """
 
-    base_path = "/tmp/isolationForestModelAndDataForONNX" + "_" + SPARK_VERSION + "_" + SCALA_VERSION_SHORT
+    base_path = (
+        "/tmp/isolationForestModelAndDataForONNX"
+        + "_"
+        + SPARK_VERSION
+        + "_"
+        + SCALA_VERSION_SHORT
+    )
 
     model_path = os.path.join(base_path, "model")
     csv_path = os.path.join(base_path, "scored")
@@ -79,9 +85,5 @@ def test_isolation_forest_onnx_integration_end_to_end():
     # 6) Compare
     diffs = np.abs(spark_scores - onnx_scores)
     max_diff = diffs.max()
-    min_diff = diffs.min()
-    avg_diff = diffs.mean()
-    median_diff = np.median(diffs)
-    print(f"Spark vs ONNX: maxDiff={max_diff:.12f}, minDiff={min_diff:.12f} avgDiff={avg_diff:.12f}, medianDiff={median_diff:.12f}")
 
     assert max_diff < 1e-5, f"Max difference too large! {max_diff}"
