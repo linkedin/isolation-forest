@@ -1,11 +1,12 @@
 package com.linkedin.relevance.isolationforest.extended
 
+import com.linkedin.relevance.isolationforest.{IsolationForestModel, IsolationForestModelReadWrite}
 import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, avgPathLength}
 import org.apache.spark.ml.Model
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.{SQLDataTypes, Vector}
 import org.apache.spark.ml.param.ParamMap
-import org.apache.spark.ml.util.{MLWritable, MLWriter}
+import org.apache.spark.ml.util.{MLReadable, MLReader, MLWritable, MLWriter}
 import org.apache.spark.sql.functions.{col, lit, udf}
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset}
@@ -123,22 +124,34 @@ class ExtendedIsolationForestModel(
   }
 
   /**
-   * Returns an ExtendedIsolationForestModelWriter instance that can
-   * be used to write the extended isolation forest to disk.
+   * Returns an IsolationForestModelWriter instance that can be used to write the isolation forest
+   * to disk.
    *
-   * @return An ExtendedIsolationForestModelWriter instance.
+   * @return An IsolationForestModelWriter instance.
    */
-  override def write: MLWriter = {
-    throw new UnsupportedOperationException(
-      "ExtendedIsolationForestModel.write is not implemented. " +
-        "Implement a custom read/write class if serialization is required."
-    )
-  }
+  override def write: MLWriter =
+    new ExtendedIsolationForestModelReadWrite.ExtendedIsolationForestModelWriter(this)
 }
 
 /**
- * Companion object to the Extended IsolationForestModel class.
+ * Companion object to the IsolationForestModel class.
  */
-object ExtendedIsolationForestModel {
-  // TODO: Implement read support for ExtendedIsolationForestModel.
+case object ExtendedIsolationForestModel extends MLReadable[ExtendedIsolationForestModel] {
+
+  /**
+   * Returns an ExtendedIsolationForestModelReader instance that can be used
+   * to read a saved extended isolation forest from disk.
+   *
+   * @return An ExtendedIsolationForestModelReader instance.
+   */
+  override def read: MLReader[ExtendedIsolationForestModel] =
+    new ExtendedIsolationForestModelReadWrite.ExtendedIsolationForestModelReader
+
+  /**
+   * Loads a saved extended isolation forest model from disk. A shortcut of `read.load(path)`.
+   *
+   * @param path The path to the saved extended isolation forest model.
+   * @return The loaded ExtendedIsolationForestModel instance.
+   */
+  override def load(path: String): ExtendedIsolationForestModel = super.load(path)
 }
