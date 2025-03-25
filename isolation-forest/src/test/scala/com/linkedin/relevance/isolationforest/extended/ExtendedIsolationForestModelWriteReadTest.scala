@@ -1,7 +1,16 @@
 package com.linkedin.relevance.isolationforest
 
-import com.linkedin.relevance.isolationforest.core.TestUtils.{LabeledDataPointVector, ScoringResult, getSparkSession, loadMammographyData}
-import com.linkedin.relevance.isolationforest.extended.{ExtendedIsolationForest, ExtendedIsolationForestModel, ExtendedIsolationTree}
+import com.linkedin.relevance.isolationforest.core.TestUtils.{
+  LabeledDataPointVector,
+  ScoringResult,
+  getSparkSession,
+  loadMammographyData,
+}
+import com.linkedin.relevance.isolationforest.extended.{
+  ExtendedIsolationForest,
+  ExtendedIsolationForestModel,
+  ExtendedIsolationTree,
+}
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.feature.VectorAssembler
@@ -13,12 +22,10 @@ import java.io.File
 
 /**
  * A suite of tests mirroring IsolationForestModelWriteReadTest but for the ExtendedIsolationForest.
- * We verify that saving and loading a trained ExtendedIsolationForestModel preserves:
- * 1) Model params (like randomSeed, contamination, etc.)
- * 2) Scores and predictions
- * 3) Tree structures
- * 4) Behavior with zero contamination and identical-feature data
- * 5) Behavior with an empty extended forest
+ * We verify that saving and loading a trained ExtendedIsolationForestModel preserves: 1) Model
+ * params (like randomSeed, contamination, etc.) 2) Scores and predictions 3) Tree structures 4)
+ * Behavior with zero contamination and identical-feature data 5) Behavior with an empty extended
+ * forest
  */
 class ExtendedIsolationForestModelWriteReadTest extends Logging {
 
@@ -54,12 +61,14 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     // Assert that all parameter values are equal
     Assert.assertEquals(
       extendedIFModel1.extractParamMap().toString,
-      extendedIFModel2.extractParamMap().toString)
+      extendedIFModel2.extractParamMap().toString,
+    )
     Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
     Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
     Assert.assertEquals(
       extendedIFModel1.getOutlierScoreThreshold,
-      extendedIFModel2.getOutlierScoreThreshold)
+      extendedIFModel2.getOutlierScoreThreshold,
+    )
 
     // Calculate the AUC for both the original and saved/loaded model and assert they are equal
     val scores1 = extendedIFModel1.transform(data).as[ScoringResult]
@@ -110,7 +119,8 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     val extendedIFModel1 = extendedIF.fit(data)
 
     // Write the trained model to disk and then read it back from disk
-    val savePath = System.getProperty("java.io.tmpdir") + "/savedExtendedIsolationForestModelZeroContamination"
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/savedExtendedIsolationForestModelZeroContamination"
     extendedIFModel1.write.overwrite().save(savePath)
     val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
@@ -118,12 +128,14 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     // Assert that all parameter values are equal
     Assert.assertEquals(
       extendedIFModel1.extractParamMap().toString,
-      extendedIFModel2.extractParamMap().toString)
+      extendedIFModel2.extractParamMap().toString,
+    )
     Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
     Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
     Assert.assertEquals(
       extendedIFModel1.getOutlierScoreThreshold,
-      extendedIFModel2.getOutlierScoreThreshold)
+      extendedIFModel2.getOutlierScoreThreshold,
+    )
 
     // Calculate the AUC for both the original and saved/loaded model and assert they are equal
     val scores1 = extendedIFModel1.transform(data).as[ScoringResult]
@@ -164,7 +176,8 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
       (0.0, 1.0, 2.0, 3.0, 1.0),
       (0.0, 1.0, 2.0, 3.0, 0.0),
       (0.0, 1.0, 2.0, 3.0, 0.0),
-      (0.0, 1.0, 2.0, 3.0, 1.0)).toDF("feature0", "feature1", "feature2", "feature3", "label")
+      (0.0, 1.0, 2.0, 3.0, 1.0),
+    ).toDF("feature0", "feature1", "feature2", "feature3", "label")
 
     val assembler = new VectorAssembler()
       .setInputCols(Array("feature0", "feature1", "feature2", "feature3"))
@@ -190,7 +203,8 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     val extendedIFModel1 = extendedIF.fit(data)
 
     // Write the trained model to disk and then read it back from disk
-    val savePath = System.getProperty("java.io.tmpdir") + "/savedExtendedIsolationForestModelIdenticalFeatures"
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/savedExtendedIsolationForestModelIdenticalFeatures"
     extendedIFModel1.write.overwrite().save(savePath)
     val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
@@ -205,7 +219,8 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
 
     Assert.assertEquals(
       scores1.map(x => x.outlierScore).collect().toSeq,
-      scores2.map(x => x.outlierScore).collect().toSeq)
+      scores2.map(x => x.outlierScore).collect().toSeq,
+    )
 
     spark.stop()
   }
@@ -216,11 +231,13 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     val spark = getSparkSession
 
     // Create an extended isolation forest model with no isolation trees
-    val extendedIFModel1 = new ExtendedIsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
+    val extendedIFModel1 =
+      new ExtendedIsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
     extendedIFModel1.setOutlierScoreThreshold(0.5)
 
     // Write the trained model to disk and then read it back from disk
-    val savePath = System.getProperty("java.io.tmpdir") + "/emptyExtendedIsolationForestModelWriteReadTest"
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/emptyExtendedIsolationForestModelWriteReadTest"
     extendedIFModel1.write.overwrite().save(savePath)
     val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
     deleteDirectory(new File(savePath))
@@ -228,12 +245,14 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     // Assert that all parameter values are equal
     Assert.assertEquals(
       extendedIFModel1.extractParamMap().toString,
-      extendedIFModel2.extractParamMap().toString)
+      extendedIFModel2.extractParamMap().toString,
+    )
     Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
     Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
     Assert.assertEquals(
       extendedIFModel1.getOutlierScoreThreshold,
-      extendedIFModel2.getOutlierScoreThreshold)
+      extendedIFModel2.getOutlierScoreThreshold,
+    )
 
     // Assert that the loaded model has 0 extended trees
     Assert.assertEquals(extendedIFModel2.extendedIsolationTrees.length, 0)

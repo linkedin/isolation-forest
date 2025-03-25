@@ -10,9 +10,9 @@ trait ExtendedIsolationForestParams extends IsolationForestParamsBase {
 
   /**
    * The extension level used by the extended isolation forest.
-   *  - 0 => standard iForest (random hyperplane has exactly 1 non-zero coordinate)
-   *  - 1 => partially extended
-   *  - 2 => fully extended in 3D (for example).
+   *   - 0 => standard iForest (random hyperplane has exactly 1 non-zero coordinate)
+   *   - 1 => partially extended
+   *   - 2 => fully extended in 3D (for example).
    *
    * Generally, extensionLevel + 1 = number of coordinates in the normal vector that are non-zero.
    * Must be in [0, dimensionOfSubspace].
@@ -21,13 +21,13 @@ trait ExtendedIsolationForestParams extends IsolationForestParamsBase {
     this,
     "extensionLevel",
     "Extension level for the random hyperplane. extensionLevel+1 = number of non-zero coordinates." +
-    " 0 => standard iForest splits, dimensionOfSubspace-1 => fully extended splits",
-    ParamValidators.gtEq(0)
+      " 0 => standard iForest splits, dimensionOfSubspace-1 => fully extended splits",
+    ParamValidators.gtEq(0),
   )
   def setExtensionLevel(value: Int): this.type = set(extensionLevel, value)
   final def getExtensionLevel: Int = $(extensionLevel)
 
   setDefault(
-    extensionLevel -> (Int.MaxValue - 1),  // Default to fully extended (the -1 is important to avoid overflow).
+    extensionLevel -> (Int.MaxValue - 1), // Default to fully extended (the -1 is important to avoid overflow).
   )
 }
