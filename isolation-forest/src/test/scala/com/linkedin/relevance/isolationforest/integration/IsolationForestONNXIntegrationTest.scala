@@ -11,10 +11,9 @@ import org.testng.annotations.Test
 import java.io.File
 
 /**
- * This is the first part of an end-to-end integration test for training an
- * Isolation Forest model on a dataset and exporting the model and data for
- * conversion to ONNX. The second part of the test is in the ONNX converter
- * module.
+ * This is the first part of an end-to-end integration test for training an Isolation Forest model
+ * on a dataset and exporting the model and data for conversion to ONNX. The second part of the test
+ * is in the ONNX converter module.
  */
 class IsolationForestONNXIntegrationTest {
 
@@ -46,9 +45,10 @@ class IsolationForestONNXIntegrationTest {
     val scoredData = model.transform(data)
 
     // 4) Write artifacts
-    val basePath = "/tmp/isolationForestModelAndDataForONNX" + "_" + sparkVersion + "_" + scalaVersionShort
+    val basePath =
+      "/tmp/isolationForestModelAndDataForONNX" + "_" + sparkVersion + "_" + scalaVersionShort
     val modelPath = s"$basePath/model"
-    val csvPath   = s"$basePath/scored"
+    val csvPath = s"$basePath/scored"
 
     FileUtils.deleteDirectory(new File(basePath))
 
@@ -67,17 +67,17 @@ class IsolationForestONNXIntegrationTest {
         "feats[3] as f3",
         "feats[4] as f4",
         "feats[5] as f5",
-        "outlierScore as sparkScore"
+        "outlierScore as sparkScore",
       )
 
-    flattened.write.option("header","true").mode("overwrite").csv(csvPath)
+    flattened.write.option("header", "true").mode("overwrite").csv(csvPath)
 
     spark.stop()
 
     // Possibly you assert that the model and CSV exist, or just pass
     val modelDir = new File(modelPath)
-    val csvDir   = new File(csvPath)
+    val csvDir = new File(csvPath)
     Assert.assertTrue(modelDir.exists(), s"Model path not found: $modelPath")
-    Assert.assertTrue(csvDir.exists(),   s"Scored CSV path not found: $csvPath")
+    Assert.assertTrue(csvDir.exists(), s"Scored CSV path not found: $csvPath")
   }
 }

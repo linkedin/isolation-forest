@@ -27,7 +27,6 @@ import org.testng.annotations.Test
 
 import scala.collection.mutable
 
-
 class BaggedPointTest {
 
   def generateDataPoints(numFeatures: Int, numInstances: Int): Array[DataPoint] = {
@@ -45,7 +44,8 @@ class BaggedPointTest {
     numCols: Int,
     expectedMean: Double,
     expectedStddev: Double,
-    epsilon: Double): Unit = {
+    epsilon: Double,
+  ): Unit = {
 
     val values = new mutable.ArrayBuffer[Double]()
     data.foreach { row =>
@@ -84,9 +84,9 @@ class BaggedPointTest {
     seeds.foreach { seed =>
       val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, 1.0, numSubsamples, true, seed)
       val subsampleCounts: Array[Array[Double]] = baggedRDD
-        .map(_.subsampleWeights.map(x => x)).collect()
-      testRandomArrays(subsampleCounts, numSubsamples, expectedMean,
-        expectedStddev, epsilon = 0.01)
+        .map(_.subsampleWeights.map(x => x))
+        .collect()
+      testRandomArrays(subsampleCounts, numSubsamples, expectedMean, expectedStddev, epsilon = 0.01)
     }
   }
 
@@ -105,9 +105,9 @@ class BaggedPointTest {
     seeds.foreach { seed =>
       val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, subsample, numSubsamples, true, seed)
       val subsampleCounts: Array[Array[Double]] = baggedRDD
-        .map(_.subsampleWeights.map(x => x)).collect()
-      testRandomArrays(subsampleCounts, numSubsamples, expectedMean,
-        expectedStddev, epsilon = 0.01)
+        .map(_.subsampleWeights.map(x => x))
+        .collect()
+      testRandomArrays(subsampleCounts, numSubsamples, expectedMean, expectedStddev, epsilon = 0.01)
     }
   }
 
@@ -125,9 +125,9 @@ class BaggedPointTest {
     seeds.foreach { seed =>
       val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, 1.0, numSubsamples, false, seed)
       val subsampleCounts: Array[Array[Double]] = baggedRDD
-        .map(_.subsampleWeights.map(x => x)).collect()
-      testRandomArrays(subsampleCounts, numSubsamples, expectedMean,
-        expectedStddev, epsilon = 0.01)
+        .map(_.subsampleWeights.map(x => x))
+        .collect()
+      testRandomArrays(subsampleCounts, numSubsamples, expectedMean, expectedStddev, epsilon = 0.01)
     }
   }
 
@@ -146,9 +146,9 @@ class BaggedPointTest {
     seeds.foreach { seed =>
       val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, subsample, numSubsamples, false, seed)
       val subsampleCounts: Array[Array[Double]] = baggedRDD
-        .map(_.subsampleWeights).collect()
-      testRandomArrays(subsampleCounts, numSubsamples, expectedMean,
-        expectedStddev, epsilon = 0.01)
+        .map(_.subsampleWeights)
+        .collect()
+      testRandomArrays(subsampleCounts, numSubsamples, expectedMean, expectedStddev, epsilon = 0.01)
     }
   }
 
@@ -159,14 +159,16 @@ class BaggedPointTest {
 
     val dataPointArray = generateDataPoints(10, 2)
     val subsampleWeights = Array(1.0, 3.0)
-    val expectedResult = Array((0, dataPointArray(0)),
-                               (0, dataPointArray(1)),
-                               (1, dataPointArray(0)),
-                               (1, dataPointArray(0)),
-                               (1, dataPointArray(0)),
-                               (1, dataPointArray(1)),
-                               (1, dataPointArray(1)),
-                               (1, dataPointArray(1)))
+    val expectedResult = Array(
+      (0, dataPointArray(0)),
+      (0, dataPointArray(1)),
+      (1, dataPointArray(0)),
+      (1, dataPointArray(0)),
+      (1, dataPointArray(0)),
+      (1, dataPointArray(1)),
+      (1, dataPointArray(1)),
+      (1, dataPointArray(1)),
+    )
 
     val dataPointRDD = spark.sparkContext.parallelize(dataPointArray.toIndexedSeq)
     val baggedPointRDD = dataPointRDD.map(x => new BaggedPoint(x, subsampleWeights))
@@ -195,14 +197,18 @@ class BaggedPointTest {
     val tol = 0.05
 
     val result1 = flattenedBaggedPointArray.count(x => x._1 == 0).toDouble
-    Assert.assertTrue(result1 === subsampleWeights(0) * numRecords +- numRecords * tol,
+    Assert.assertTrue(
+      result1 === subsampleWeights(0) * numRecords +- numRecords * tol,
       s"expected ${subsampleWeights(0) * numRecords} +/- ${numRecords * tol}, but observed" +
-        s" ${result1}")
+        s" ${result1}",
+    )
 
     val result2 = flattenedBaggedPointArray.count(x => x._1 == 1).toDouble
-    Assert.assertTrue(result2 === subsampleWeights(1) * numRecords +- numRecords * tol,
+    Assert.assertTrue(
+      result2 === subsampleWeights(1) * numRecords +- numRecords * tol,
       s"expected ${subsampleWeights(1) * numRecords} +/- ${numRecords * tol}, but observed" +
-        s" ${result2}")
+        s" ${result2}",
+    )
   }
 
   @Test(description = "baggedPointEmptyRDDTest")
@@ -226,16 +232,28 @@ class BaggedPointTest {
     val rdd = spark.sparkContext.parallelize(singleDataPoint.toIndexedSeq, numSlices = 1)
 
     // Subsample with a small rate, multiple subsamples, no replacement
-    val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, subsamplingRate = 0.5, numSubsamples = 3, withReplacement = false, seed = 100L)
+    val baggedRDD = BaggedPoint.convertToBaggedRDD(
+      rdd,
+      subsamplingRate = 0.5,
+      numSubsamples = 3,
+      withReplacement = false,
+      seed = 100L,
+    )
 
     // There should be exactly one BaggedPoint in the result
-    Assert.assertEquals(baggedRDD.count(), 1L, "Expected exactly 1 bagged point for single-record RDD.")
+    Assert.assertEquals(
+      baggedRDD.count(),
+      1L,
+      "Expected exactly 1 bagged point for single-record RDD.",
+    )
 
     // Flatten and see how many copies appear
     val flattened = BaggedPoint.flattenBaggedRDD(baggedRDD, seed = 100L).collect()
     // Because it's Binomial(1, 0.5) for 3 subsamples, we expect an integer between 0 and 3 total.
-    Assert.assertTrue(flattened.length >= 0 && flattened.length <= 3,
-      s"Flattened length should be between 0 and 3, found ${flattened.length}.")
+    Assert.assertTrue(
+      flattened.length >= 0 && flattened.length <= 3,
+      s"Flattened length should be between 0 and 3, found ${flattened.length}.",
+    )
   }
 
   @Test(description = "baggedPointVerySmallSubsamplingRateTest")
@@ -247,7 +265,14 @@ class BaggedPointTest {
 
     // Use a very small subsampling rate
     val verySmallRate = 0.001
-    val baggedRDD = BaggedPoint.convertToBaggedRDD(rdd, verySmallRate, numSubsamples = 5, withReplacement = true, seed = 9999L)
+    val baggedRDD =
+      BaggedPoint.convertToBaggedRDD(
+        rdd,
+        verySmallRate,
+        numSubsamples = 5,
+        withReplacement = true,
+        seed = 9999L,
+      )
 
     // Collect subsample weights
     val subsampleWeights: Array[Array[Double]] = baggedRDD.map(_.subsampleWeights).collect()
@@ -255,8 +280,10 @@ class BaggedPointTest {
     // Optional: We can do a rough check that the average is near the Poisson mean of 0.001 for each subsample
     // Reuse your existing testRandomArrays if you like, or do a simpler sanity check:
     val meanWeights = subsampleWeights.flatten.sum / subsampleWeights.flatten.length
-    Assert.assertTrue(math.abs(meanWeights - verySmallRate) < 0.0005,
-      s"Mean weight $meanWeights should be near $verySmallRate for a very small sampling rate.")
+    Assert.assertTrue(
+      math.abs(meanWeights - verySmallRate) < 0.0005,
+      s"Mean weight $meanWeights should be near $verySmallRate for a very small sampling rate.",
+    )
   }
 
   @Test(description = "baggedPointConsistencyOfResultsTest")
@@ -267,21 +294,41 @@ class BaggedPointTest {
 
     // We run convertToBaggedRDD twice with the same seed and compare
     val seed = 2020L
-    val baggedRDD1 = BaggedPoint.convertToBaggedRDD(rdd, subsamplingRate = 0.3, numSubsamples = 5, withReplacement = true, seed)
-    val baggedRDD2 = BaggedPoint.convertToBaggedRDD(rdd, subsamplingRate = 0.3, numSubsamples = 5, withReplacement = true, seed)
+    val baggedRDD1 =
+      BaggedPoint.convertToBaggedRDD(
+        rdd,
+        subsamplingRate = 0.3,
+        numSubsamples = 5,
+        withReplacement = true,
+        seed,
+      )
+    val baggedRDD2 =
+      BaggedPoint.convertToBaggedRDD(
+        rdd,
+        subsamplingRate = 0.3,
+        numSubsamples = 5,
+        withReplacement = true,
+        seed,
+      )
 
     // Collect the results
     val arr1 = baggedRDD1.map(_.subsampleWeights).collect()
     val arr2 = baggedRDD2.map(_.subsampleWeights).collect()
 
     // They should be the same length
-    Assert.assertEquals(arr1.length, arr2.length, "Both runs should produce the same number of BaggedPoints.")
+    Assert.assertEquals(
+      arr1.length,
+      arr2.length,
+      "Both runs should produce the same number of BaggedPoints.",
+    )
 
     // Compare them element-wise to ensure they match
     // (We expect EXACT match because same seed => same distribution draws)
-    for(i <- arr1.indices) {
-      Assert.assertEquals(arr1(i), arr2(i),
-        s"Mismatch in subsampleWeights for record $i with the same seed = $seed.")
-    }
+    for (i <- arr1.indices)
+      Assert.assertEquals(
+        arr1(i),
+        arr2(i),
+        s"Mismatch in subsampleWeights for record $i with the same seed = $seed.",
+      )
   }
 }

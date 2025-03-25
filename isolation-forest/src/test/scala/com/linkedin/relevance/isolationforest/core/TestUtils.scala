@@ -5,17 +5,36 @@ import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.{Dataset, Encoders, SparkSession}
 
-
 object TestUtils {
 
   case class LabeledDataPointVector(features: Vector, label: Double)
-  case class MammographyRecord(feature0: Double, feature1: Double, feature2: Double, feature3: Double,
-                               feature4: Double, feature5: Double, label: Double)
-  case class ScoringResult(features: Vector, label: Double, predictedLabel: Double, outlierScore: Double)
-  case class ShuttleRecord(feature0: Double, feature1: Double, feature2: Double, feature3: Double,
-                           feature4: Double, feature5: Double, feature6: Double, feature7: Double,
-                           feature8: Double, label: Double)
-
+  case class MammographyRecord(
+    feature0: Double,
+    feature1: Double,
+    feature2: Double,
+    feature3: Double,
+    feature4: Double,
+    feature5: Double,
+    label: Double,
+  )
+  case class ScoringResult(
+    features: Vector,
+    label: Double,
+    predictedLabel: Double,
+    outlierScore: Double,
+  )
+  case class ShuttleRecord(
+    feature0: Double,
+    feature1: Double,
+    feature2: Double,
+    feature3: Double,
+    feature4: Double,
+    feature5: Double,
+    feature6: Double,
+    feature7: Double,
+    feature8: Double,
+    label: Double,
+  )
 
   def getSparkSession: SparkSession = {
 
@@ -28,7 +47,8 @@ object TestUtils {
     }
 
     // local context with 4 threads
-    SparkSession.builder()
+    SparkSession
+      .builder()
       .master("local[4]")
       .appName("testing-spark")
       .config(sparkConf)
@@ -78,8 +98,19 @@ object TestUtils {
       .as[ShuttleRecord]
 
     val assembler = new VectorAssembler()
-      .setInputCols(Array("feature0", "feature1", "feature2", "feature3", "feature4", "feature5",
-        "feature6", "feature7", "feature8"))
+      .setInputCols(
+        Array(
+          "feature0",
+          "feature1",
+          "feature2",
+          "feature3",
+          "feature4",
+          "feature5",
+          "feature6",
+          "feature7",
+          "feature8",
+        ),
+      )
       .setOutputCol("features")
 
     val data = assembler
@@ -90,12 +121,12 @@ object TestUtils {
     data
   }
 
-  def readCsv(path: String) : Array[Array[Float]] = {
+  def readCsv(path: String): Array[Array[Float]] = {
 
     val bufferedSource = scala.io.Source.fromFile(path)
     val data = bufferedSource
       .getLines()
-      .filter(x => x(0) != '#')  // Remove comments
+      .filter(x => x(0) != '#') // Remove comments
       .map(_.split(",").map(_.trim.toFloat))
       .toArray
     bufferedSource.close()
