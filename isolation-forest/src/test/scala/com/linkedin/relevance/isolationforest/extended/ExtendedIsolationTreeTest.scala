@@ -1,12 +1,14 @@
 package com.linkedin.relevance.isolationforest.extended
 
-import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{ExtendedExternalNode, ExtendedInternalNode}
+import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
+  ExtendedExternalNode,
+  ExtendedInternalNode,
+}
 import com.linkedin.relevance.isolationforest.core.TestUtils.readCsv
 import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
 import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
 import org.testng.Assert
 import org.testng.annotations.Test
-
 
 class ExtendedIsolationTreeTest {
 
@@ -15,7 +17,7 @@ class ExtendedIsolationTreeTest {
 
     val data = readCsv("src/test/resources/shuttle.csv")
 
-    val dataArray = data.map(x => DataPoint(x.slice(0, data.head.length - 1)))  // Drop labels column
+    val dataArray = data.map(x => DataPoint(x.slice(0, data.head.length - 1))) // Drop labels column
 
     val heightLimit = 15
     val randomState = new scala.util.Random(1)

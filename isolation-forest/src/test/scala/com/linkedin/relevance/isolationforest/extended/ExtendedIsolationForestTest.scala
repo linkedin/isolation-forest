@@ -9,7 +9,6 @@ import org.testng.annotations.Test
 
 import java.io.File
 
-
 class ExtendedIsolationForestTest {
 
   @Test(description = "extendedIsolationForestMammographyDataTest")
@@ -46,8 +45,11 @@ class ExtendedIsolationForestTest {
     val aurocExpectation = 0.86
     val uncert = 0.02
     val auroc = metrics.areaUnderROC()
-    Assert.assertTrue(auroc === aurocExpectation +- uncert, "expected area under ROC =" +
-      s" $aurocExpectation +/- $uncert, but observed $auroc")
+    Assert.assertTrue(
+      auroc === aurocExpectation +- uncert,
+      "expected area under ROC =" +
+        s" $aurocExpectation +/- $uncert, but observed $auroc",
+    )
 
     spark.stop()
   }
@@ -87,8 +89,11 @@ class ExtendedIsolationForestTest {
     val aurocExpectation = 0.86
     val uncert = 0.02
     val auroc = metrics.areaUnderROC()
-    Assert.assertTrue(auroc === aurocExpectation +- uncert, "expected area under ROC =" +
-      s" $aurocExpectation +/- $uncert, but observed $auroc")
+    Assert.assertTrue(
+      auroc === aurocExpectation +- uncert,
+      "expected area under ROC =" +
+        s" $aurocExpectation +/- $uncert, but observed $auroc",
+    )
 
     spark.stop()
   }
@@ -127,8 +132,11 @@ class ExtendedIsolationForestTest {
     val aurocExpectation = 0.87
     val uncert = 0.02
     val auroc = metrics.areaUnderROC()
-    Assert.assertTrue(auroc === aurocExpectation +- uncert, "expected area under ROC =" +
-      s" $aurocExpectation +/- $uncert, but observed $auroc")
+    Assert.assertTrue(
+      auroc === aurocExpectation +- uncert,
+      "expected area under ROC =" +
+        s" $aurocExpectation +/- $uncert, but observed $auroc",
+    )
 
     spark.stop()
   }
@@ -166,7 +174,8 @@ class ExtendedIsolationForestTest {
     Assert.assertEquals(
       predictedLabels.toSeq,
       expectedLabels.toSeq,
-      "expected all predicted labels to be 0.0")
+      "expected all predicted labels to be 0.0",
+    )
 
     spark.stop()
   }
@@ -204,8 +213,11 @@ class ExtendedIsolationForestTest {
 
     val aurocThreshold = 0.99
     val auroc = metrics.areaUnderROC()
-    Assert.assertTrue(auroc > aurocThreshold, s"Expected area under ROC > $aurocThreshold, but" +
-      s" observed $auroc")
+    Assert.assertTrue(
+      auroc > aurocThreshold,
+      s"Expected area under ROC > $aurocThreshold, but" +
+        s" observed $auroc",
+    )
 
     spark.stop()
   }
