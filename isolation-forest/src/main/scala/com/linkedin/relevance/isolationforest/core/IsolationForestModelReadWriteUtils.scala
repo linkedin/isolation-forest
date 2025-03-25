@@ -13,8 +13,8 @@ import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods.{compact, parse, render}
 
 /**
- * A base trait housing code common to both standard (IsolationForest) and extended
- * isolation forest read/write logic.
+ * A base trait housing code common to both standard (IsolationForest) and extended isolation forest
+ * read/write logic.
  */
 private[isolationforest] case object IsolationForestModelReadWriteUtils extends Logging {
 
@@ -28,13 +28,20 @@ private[isolationforest] case object IsolationForestModelReadWriteUtils extends 
   /**
    * Stores the isolation forest model metadata.
    *
-   * @param className The name of the saved class.
-   * @param uid The immutable unique ID for the model.
-   * @param timestamp The time when the model was saved.
-   * @param sparkVersion The Spark version used to save the model.
-   * @param params The model paramMap, as a `JValue`.
-   * @param metadata All metadata, including the other fields not in paramMap.
-   * @param metadataJson Full metadata file String (for debugging).
+   * @param className
+   *   The name of the saved class.
+   * @param uid
+   *   The immutable unique ID for the model.
+   * @param timestamp
+   *   The time when the model was saved.
+   * @param sparkVersion
+   *   The Spark version used to save the model.
+   * @param params
+   *   The model paramMap, as a `JValue`.
+   * @param metadata
+   *   All metadata, including the other fields not in paramMap.
+   * @param metadataJson
+   *   Full metadata file String (for debugging).
    */
   case class Metadata(
     className: String,
@@ -43,15 +50,17 @@ private[isolationforest] case object IsolationForestModelReadWriteUtils extends 
     sparkVersion: String,
     params: JValue,
     metadata: JValue,
-    metadataJson: String) {
+    metadataJson: String,
+  ) {
 
     /**
      * Extract Params from metadata, and set them in the model instance. This works if all Params
      * implement [[org.apache.spark.ml.param.Param.jsonDecode()]].
      *
-     * @param instance The model instance.
+     * @param instance
+     *   The model instance.
      */
-    def setParams(instance: Params): Unit = {
+    def setParams(instance: Params): Unit =
 
       params match {
         case JObject(pairs) =>
@@ -63,21 +72,20 @@ private[isolationforest] case object IsolationForestModelReadWriteUtils extends 
         case _ =>
           throw new IllegalArgumentException(s"Cannot recognize JSON metadata: ${metadataJson}.")
       }
-    }
   }
 
   /**
-   * Read a metadata JSON file from 'metadata/' subdir. The `expectedClassName` can be empty or
-   * a required class name to enforce a check.
+   * Read a metadata JSON file from 'metadata/' subdir. The `expectedClassName` can be empty or a
+   * required class name to enforce a check.
    *
-   * @param path              The top-level directory path for the model
-   * @param spark             The SparkSession
-   * @param expectedClassName If non-empty, we verify the loaded metadata's class matches.
+   * @param path
+   *   The top-level directory path for the model
+   * @param spark
+   *   The SparkSession
+   * @param expectedClassName
+   *   If non-empty, we verify the loaded metadata's class matches.
    */
-   def loadMetadata(
-    path: String,
-    spark: SparkSession,
-    expectedClassName: String): Metadata = {
+  def loadMetadata(path: String, spark: SparkSession, expectedClassName: String): Metadata = {
 
     val metadataPath = new Path(path, "metadata").toString
     logInfo(s"Loading model metadata from $metadataPath")
@@ -89,22 +97,19 @@ private[isolationforest] case object IsolationForestModelReadWriteUtils extends 
   /**
    * Parse the JSON metadata string into our Metadata container.
    */
-  private def parseMetadata(
-    metadataStr: String,
-    expectedClassName: String): Metadata = {
+  private def parseMetadata(metadataStr: String, expectedClassName: String): Metadata = {
 
     implicit val fmt = DefaultFormats
     val js = parse(metadataStr)
 
     val cls = (js \ "class").extract[String]
     if (expectedClassName.nonEmpty) {
-      require(cls == expectedClassName,
-        s"Expected class $expectedClassName, but found $cls")
+      require(cls == expectedClassName, s"Expected class $expectedClassName, but found $cls")
     }
     val uid = (js \ "uid").extract[String]
     val ts = (js \ "timestamp").extract[Long]
     val sparkVer = (js \ "sparkVersion").extract[String]
-    val p = (js \ "paramMap")
+    val p = js \ "paramMap"
 
     Metadata(cls, uid, ts, sparkVer, p, js, metadataStr)
   }
@@ -112,16 +117,21 @@ private[isolationforest] case object IsolationForestModelReadWriteUtils extends 
   /**
    * Writes the spark.ml model metadata and Params values to disk.
    *
-   * @param instance The spark.ml Model instance to save.
-   * @param path The path on disk used to save the metadata.
-   * @param spark The SparkSession instance to use.
-   * @param extraMetadata Any extra metadata to save in addition to the model Params.
+   * @param instance
+   *   The spark.ml Model instance to save.
+   * @param path
+   *   The path on disk used to save the metadata.
+   * @param spark
+   *   The SparkSession instance to use.
+   * @param extraMetadata
+   *   Any extra metadata to save in addition to the model Params.
    */
   def saveMetadata(
     instance: Params,
     path: String,
     spark: SparkSession,
-    extraMetadata: Option[JObject] = None): Unit = {
+    extraMetadata: Option[JObject] = None,
+  ): Unit = {
 
     val metadataPath = new Path(path, "metadata").toString
     val metadataJson = getMetadataToSave(instance, spark, extraMetadata)
@@ -132,15 +142,20 @@ private[isolationforest] case object IsolationForestModelReadWriteUtils extends 
   /**
    * This is a helper method for [[IsolationForestModelWriter.saveMetadata()]].
    *
-   * @param instance The spark.ml Model instance to save.
-   * @param spark The SparkSession instance to use.
-   * @param extraMetadata Any extra metadata to save in addition to the model Params.
-   * @return The metadata JSON string.
+   * @param instance
+   *   The spark.ml Model instance to save.
+   * @param spark
+   *   The SparkSession instance to use.
+   * @param extraMetadata
+   *   Any extra metadata to save in addition to the model Params.
+   * @return
+   *   The metadata JSON string.
    */
   private def getMetadataToSave(
-                                 instance: Params,
-                                 spark: SparkSession,
-                                 extraMetadata: Option[JObject] = None): String = {
+    instance: Params,
+    spark: SparkSession,
+    extraMetadata: Option[JObject] = None,
+  ): String = {
 
     val uid = instance.uid
     val cls = instance.getClass.getName
@@ -155,7 +170,7 @@ private[isolationforest] case object IsolationForestModelReadWriteUtils extends 
       ("paramMap" -> jsonParams)
     val metadata = extraMetadata match {
       case Some(jObject) => basicMetadata ~ jObject
-      case None => basicMetadata
+      case None          => basicMetadata
     }
     val metadataJson = compact(render(metadata))
 

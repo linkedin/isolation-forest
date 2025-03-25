@@ -4,7 +4,7 @@ import com.linkedin.relevance.isolationforest.core.IsolationForestModelReadWrite
   NullNodeId,
   NullNumInstances,
   loadMetadata,
-  saveMetadata
+  saveMetadata,
 }
 import com.linkedin.relevance.isolationforest.{IsolationForestModel, IsolationTree}
 import com.linkedin.relevance.isolationforest.Nodes.{ExternalNode, InternalNode, Node}
@@ -18,7 +18,6 @@ import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods._
 import org.json4s.JsonDSL._
 import org.json4s._
-
 
 private[isolationforest] case object IsolationForestModelReadWrite extends Logging {
 
@@ -35,22 +34,28 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   /**
    * Stores the serializable data for a [[Node]].
    *
-   * @param id Node index used for tree reconstruction. Indices follow a pre-order traversal.
-   * @param leftChild Left child node index, or value of -1 if this node is a leaf node.
-   * @param rightChild Right child node index, or value of -1 if this node is a leaf node.
-   * @param splitAttribute The feature upon which the split was performed, or -1 if this node is a
-   *                       leaf node.
-   * @param splitValue The feature value used for the split, or 0.0 if this node is a leaf node.
-   * @param numInstances If this is a leaf node, the number of instances in for this node, or -1 if
-   *                     this is an internal node.
+   * @param id
+   *   Node index used for tree reconstruction. Indices follow a pre-order traversal.
+   * @param leftChild
+   *   Left child node index, or value of -1 if this node is a leaf node.
+   * @param rightChild
+   *   Right child node index, or value of -1 if this node is a leaf node.
+   * @param splitAttribute
+   *   The feature upon which the split was performed, or -1 if this node is a leaf node.
+   * @param splitValue
+   *   The feature value used for the split, or 0.0 if this node is a leaf node.
+   * @param numInstances
+   *   If this is a leaf node, the number of instances in for this node, or -1 if this is an
+   *   internal node.
    */
   case class NodeData(
-                       id: Int,
-                       leftChild: Int,
-                       rightChild: Int,
-                       splitAttribute: Int,
-                       splitValue: Double,
-                       numInstances: Long)
+    id: Int,
+    leftChild: Int,
+    rightChild: Int,
+    splitAttribute: Int,
+    splitValue: Double,
+    numInstances: Long,
+  )
 
   /**
    * Companion object to the NodeData class.
@@ -60,20 +65,24 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     /**
      * Serializes a binary tree of [[Node]] instances.
      *
-     * @param node The head node of the binary tree to be serialized.
-     * @return Serialized sequence of NodeData instances
+     * @param node
+     *   The head node of the binary tree to be serialized.
+     * @return
+     *   Serialized sequence of NodeData instances
      */
     def build(node: Node): Seq[NodeData] = {
 
       /**
-       * This helper method for [[NodeData.build()]] serializes a binary tree of [[Node]]
-       * instances.
+       * This helper method for [[NodeData.build()]] serializes a binary tree of [[Node]] instances.
        *
-       * @param node The head node of the binary tree to be serialized.
-       * @param id Node index used for tree reconstruction. Indices follow a pre-order traversal.
-       * @return (sequence of nodes in pre-order traversal order, largest ID in subtree)
+       * @param node
+       *   The head node of the binary tree to be serialized.
+       * @param id
+       *   Node index used for tree reconstruction. Indices follow a pre-order traversal.
+       * @return
+       *   (sequence of nodes in pre-order traversal order, largest ID in subtree)
        */
-      def buildInternal(node: Node, id: Int): (Seq[NodeData], Int) = {
+      def buildInternal(node: Node, id: Int): (Seq[NodeData], Int) =
 
         node match {
           case internalNode: InternalNode =>
@@ -86,22 +95,28 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
               rightNodeData.head.id,
               internalNode.splitAttribute,
               internalNode.splitValue,
-              NullNumInstances)
+              NullNumInstances,
+            )
             (thisNodeData +: (leftNodeData ++ rightNodeData), rightIdx)
           case externalNode: ExternalNode =>
             // For external nodes, leftChild, rightChild, splitAttribute, and splitValue do not
             // exist, so they are set to -1, -1, -1, and 0.0, respectively, for serialization.
-            (Seq(NodeData(
+            (
+              Seq(
+                NodeData(
+                  id,
+                  NullNodeId,
+                  NullNodeId,
+                  NullSplitAttribute,
+                  NullSplitValue,
+                  externalNode.numInstances,
+                ),
+              ),
               id,
-              NullNodeId,
-              NullNodeId,
-              NullSplitAttribute,
-              NullSplitValue,
-              externalNode.numInstances)), id)
+            )
           case _ =>
             throw new IllegalArgumentException(s"Unknown node type: ${node.getClass.toString}")
         }
-      }
 
       val serializedNodeData = buildInternal(node, 0)
       serializedNodeData._1
@@ -114,9 +129,11 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   /**
    * Stores the data for an ensemble of trees constructed of [[Node]]s.
    *
-   * @param treeID   The ID specifying the tree to which this node belongs.
-   * @param nodeData The [[NodeData]] instance containing the information from the corresponding
-   *                 [[Node]] in the tree.
+   * @param treeID
+   *   The ID specifying the tree to which this node belongs.
+   * @param nodeData
+   *   The [[NodeData]] instance containing the information from the corresponding [[Node]] in the
+   *   tree.
    */
   case class EnsembleNodeData(treeID: Int, nodeData: NodeData)
 
@@ -128,9 +145,12 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     /**
      * Serializes an [[IsolationTree]] instance.
      *
-     * @param tree The IsolationTree instance to serialize.
-     * @param treeID The ID specifying the index of this isolation tree in the ensemble.
-     * @return A sequence of EnsembleNodeData instances.
+     * @param tree
+     *   The IsolationTree instance to serialize.
+     * @param treeID
+     *   The ID specifying the index of this isolation tree in the ensemble.
+     * @return
+     *   A sequence of EnsembleNodeData instances.
      */
     def build(tree: IsolationTree, treeID: Int): Seq[EnsembleNodeData] = {
       val nodeData = NodeData.build(tree.node)
@@ -139,19 +159,24 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   }
 
   /**
-   * Builds a binary tree given an array of NodeData instances. The node IDs must
-   * have been assigned via pre-order traversal.
+   * Builds a binary tree given an array of NodeData instances. The node IDs must have been assigned
+   * via pre-order traversal.
    *
-   * @param data An Array of NodeData instances.
-   * @return The root node of the resulting binary tree.
+   * @param data
+   *   An Array of NodeData instances.
+   * @return
+   *   The root node of the resulting binary tree.
    */
   private def buildTreeFromNodes(data: Array[NodeData]): Node = {
 
     val nodes = data.sortBy(_.id)
 
-    require(nodes.map(x => x.id).sameElements(nodes.indices), s"Isolation tree load failed." +
-      s" Expected the ${nodes.length} node IDs to be monotonically increasing from 0 to" +
-      s" ${nodes.length - 1}.")
+    require(
+      nodes.map(x => x.id).sameElements(nodes.indices),
+      s"Isolation tree load failed." +
+        s" Expected the ${nodes.length} node IDs to be monotonically increasing from 0 to" +
+        s" ${nodes.length - 1}.",
+    )
 
     // We fill `finalNodes` in reverse order. Since node IDs are assigned via a pre-order
     // traversal, this guarantees that child nodes will be built before parent nodes.
@@ -160,11 +185,7 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
       val node = if (nodeData.leftChild != NullNodeId) {
         val leftChild = finalNodes(nodeData.leftChild)
         val rightChild = finalNodes(nodeData.rightChild)
-        InternalNode(
-          leftChild,
-          rightChild,
-          nodeData.splitAttribute,
-          nodeData.splitValue)
+        InternalNode(leftChild, rightChild, nodeData.splitAttribute, nodeData.splitValue)
       } else {
         ExternalNode(nodeData.numInstances)
       }
@@ -182,7 +203,8 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     /**
      * Overrides [[org.apache.spark.ml.util.MLWriter.saveImpl]].
      *
-     * @param path The file path to the directory where the saved model should be written.
+     * @param path
+     *   The file path to the directory where the saved model should be written.
      */
     override def saveImpl(path: String): Unit = {
 
@@ -196,15 +218,19 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
     /**
      * Helper method for saving a tree ensemble to disk.
      *
-     * @param path The path on disk used to save the ensemble model.
-     * @param spark The SparkSession instance to use.
-     * @param extraMetadata Metadata such as outlierScoreThreshold, numSamples, and numFeatures.
+     * @param path
+     *   The path on disk used to save the ensemble model.
+     * @param spark
+     *   The SparkSession instance to use.
+     * @param extraMetadata
+     *   Metadata such as outlierScoreThreshold, numSamples, and numFeatures.
      */
     private def saveImplHelper(path: String, spark: SparkSession, extraMetadata: JObject): Unit = {
 
       saveMetadata(model, path, spark, Some(extraMetadata))
       val dataPath = new Path(path, "data").toString
-      val nodeDataRDD = spark.sparkContext.parallelize(model.isolationTrees.zipWithIndex.toIndexedSeq)
+      val nodeDataRDD = spark.sparkContext
+        .parallelize(model.isolationTrees.zipWithIndex.toIndexedSeq)
         .flatMap { case (tree, treeID) => EnsembleNodeData.build(tree, treeID) }
       logInfo(s"Saving IsolationForestModel tree data to path ${dataPath}")
 
@@ -219,17 +245,21 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
   class IsolationForestModelReader extends MLReader[IsolationForestModel] {
 
     /**
-     * Helper method for loading a tree ensemble from disk. This reconstructs all trees,
-     * returning the root nodes.
+     * Helper method for loading a tree ensemble from disk. This reconstructs all trees, returning
+     * the root nodes.
      *
-     * @param path      Path to the model directory.
-     * @param spark     The SparkSession object.
-     * @param buildTree A function that takes an array of NodeData and returns a NodeBase instance.
+     * @param path
+     *   Path to the model directory.
+     * @param spark
+     *   The SparkSession object.
+     * @param buildTree
+     *   A function that takes an array of NodeData and returns a NodeBase instance.
      */
     private def loadTrees(
-                           path: String,
-                           spark: SparkSession,
-                           buildTree: Array[NodeData] => NodeBase): Array[NodeBase] = {
+      path: String,
+      spark: SparkSession,
+      buildTree: Array[NodeData] => NodeBase,
+    ): Array[NodeBase] = {
 
       import spark.implicits._
 
@@ -259,8 +289,10 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
 
       val rootNodes = loadTrees(path, sparkSession, buildTreeFromNodes)
       val trees = rootNodes.map {
-        case internalNode: InternalNode => new IsolationTree(internalNode.asInstanceOf[InternalNode])
-        case externalNode: ExternalNode => new IsolationTree(externalNode.asInstanceOf[ExternalNode])
+        case internalNode: InternalNode =>
+          new IsolationTree(internalNode.asInstanceOf[InternalNode])
+        case externalNode: ExternalNode =>
+          new IsolationTree(externalNode.asInstanceOf[ExternalNode])
       }
 
       val model = new IsolationForestModel(metadata.uid, trees, numSamples, numFeatures)
