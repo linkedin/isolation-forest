@@ -1,7 +1,12 @@
 package com.linkedin.relevance.isolationforest.extended
 
 import com.linkedin.relevance.isolationforest.IsolationForestModel
-import com.linkedin.relevance.isolationforest.core.IsolationForestModelReadWriteUtils.{NullNodeId, NullNumInstances, loadMetadata, saveMetadata}
+import com.linkedin.relevance.isolationforest.core.IsolationForestModelReadWriteUtils.{
+  NullNodeId,
+  NullNumInstances,
+  loadMetadata,
+  saveMetadata,
+}
 import com.linkedin.relevance.isolationforest.extended.ExtendedIsolationForestModel
 import com.linkedin.relevance.isolationforest.extended.ExtendedNodes._
 import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
@@ -12,7 +17,6 @@ import org.apache.spark.internal.Logging
 import org.json4s.jackson.JsonMethods._
 import org.json4s.{DefaultFormats, JObject}
 import org.json4s.JsonDSL._
-
 
 private[extended] case object ExtendedIsolationForestModelReadWrite extends Logging {
 
@@ -29,41 +33,53 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
   /**
    * Data record for a single node in an extended isolation tree.
    *
-   * @param id           Node index (pre-order traversal). Must be unique in [0..N-1].
-   * @param leftChild    Index of the left child, or -1 if leaf.
-   * @param rightChild   Index of the right child, or -1 if leaf.
-   * @param norm         Random hyperplane normal vector. Empty if leaf.
-   * @param offset       Random hyperplane offset. 0.0 if leaf.
-   * @param numInstances For a leaf node, the number of samples that landed here. Otherwise -1.
+   * @param id
+   *   Node index (pre-order traversal). Must be unique in [0..N-1].
+   * @param leftChild
+   *   Index of the left child, or -1 if leaf.
+   * @param rightChild
+   *   Index of the right child, or -1 if leaf.
+   * @param norm
+   *   Random hyperplane normal vector. Empty if leaf.
+   * @param offset
+   *   Random hyperplane offset. 0.0 if leaf.
+   * @param numInstances
+   *   For a leaf node, the number of samples that landed here. Otherwise -1.
    */
   case class ExtendedNodeData(
-                               id: Int,
-                               leftChild: Int,
-                               rightChild: Int,
-                               norm: Array[Double],
-                               offset: Double,
-                               numInstances: Long
-                             )
+    id: Int,
+    leftChild: Int,
+    rightChild: Int,
+    norm: Array[Double],
+    offset: Double,
+    numInstances: Long,
+  )
 
   case object ExtendedNodeData {
 
     /**
      * Serializes a binary extended isolation tree.
      *
-     * @param node The head node (ExtendedNode) of the tree to be serialized.
-     * @return Serialized sequence of ExtendedNodeData instances in pre-order traversal.
+     * @param node
+     *   The head node (ExtendedNode) of the tree to be serialized.
+     * @return
+     *   Serialized sequence of ExtendedNodeData instances in pre-order traversal.
      */
     def build(node: ExtendedNode): Seq[ExtendedNodeData] = {
 
       /**
-       * This helper method recursively traverses an extended isolation tree in pre-order,
-       * assigning node IDs from 0..N-1.
+       * This helper method recursively traverses an extended isolation tree in pre-order, assigning
+       * node IDs from 0..N-1.
        *
-       * @param node The current ExtendedNode being visited.
-       * @param id   The node index (pre-order).
-       * @return A tuple of (serialized nodes in this subtree, next available ID after finishing this subtree).
+       * @param node
+       *   The current ExtendedNode being visited.
+       * @param id
+       *   The node index (pre-order).
+       * @return
+       *   A tuple of (serialized nodes in this subtree, next available ID after finishing this
+       *   subtree).
        */
-      def buildInternal(node: ExtendedNode, id: Int): (Seq[ExtendedNodeData], Int) = {
+      def buildInternal(node: ExtendedNode, id: Int): (Seq[ExtendedNodeData], Int) =
 
         node match {
           case ExtendedInternalNode(leftChild, rightChild, splitHyperplane) =>
@@ -79,7 +95,7 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
               rightChild = rightNodeData.head.id,
               norm = splitHyperplane.norm,
               offset = splitHyperplane.offset,
-              numInstances = NullNumInstances
+              numInstances = NullNumInstances,
             )
             // Prepend this node's data, then append children
             (thisNodeData +: (leftNodeData ++ rightNodeData), rightIdx)
@@ -92,14 +108,13 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
               rightChild = NullNodeId,
               norm = NullNorm,
               offset = NullOffset,
-              numInstances = numInst
+              numInstances = numInst,
             )
             (Seq(leafData), id)
 
           case _ =>
             throw new IllegalArgumentException(s"Unknown node type: ${node.getClass.toString}")
         }
-      }
 
       // Kick off recursion from the root with ID=0
       val (serialized, _) = buildInternal(node, 0)
@@ -110,13 +125,15 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
   /**
    * Associates node data with a particular tree in the ensemble.
    *
-   * @param treeID           ID (0-based) of the tree this node belongs to.
-   * @param extendedNodeData The node data itself.
+   * @param treeID
+   *   ID (0-based) of the tree this node belongs to.
+   * @param extendedNodeData
+   *   The node data itself.
    */
   case class ExtendedEnsembleNodeData(
-                                       treeID: Int,
-                                       extendedNodeData: ExtendedNodeData
-                                     )
+    treeID: Int,
+    extendedNodeData: ExtendedNodeData,
+  )
 
   /**
    * Companion object to the ExtendedEnsembleNodeData class.
@@ -126,9 +143,12 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
     /**
      * Serializes an [[ExtendedIsolationTree]] instance.
      *
-     * @param tree   The ExtendedIsolationTree to serialize.
-     * @param treeID The ID specifying the index of this isolation tree in the ensemble.
-     * @return A sequence of ExtendedEnsembleNodeData instances.
+     * @param tree
+     *   The ExtendedIsolationTree to serialize.
+     * @param treeID
+     *   The ID specifying the index of this isolation tree in the ensemble.
+     * @return
+     *   A sequence of ExtendedEnsembleNodeData instances.
      */
     def build(tree: ExtendedIsolationTree, treeID: Int): Seq[ExtendedEnsembleNodeData] = {
       // Use ExtendedNodeData.build(...) to serialize the tree's root node
@@ -142,14 +162,18 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
    * Builds a binary extended isolation tree from an array of ExtendedNodeData. The node IDs must
    * have been assigned via a pre-order traversal (0..N-1).
    *
-   * @param data An Array of ExtendedNodeData describing one extended isolation tree.
-   * @return The root ExtendedNode of the reconstructed tree.
+   * @param data
+   *   An Array of ExtendedNodeData describing one extended isolation tree.
+   * @return
+   *   The root ExtendedNode of the reconstructed tree.
    */
   private def buildExtendedNode(data: Array[ExtendedNodeData]): ExtendedNode = {
     // 1) Sort the input by ID and ensure IDs are exactly [0..length-1].
     val sorted = data.sortBy(_.id)
-    require(sorted.map(_.id).sameElements(sorted.indices),
-      "Extended tree load failed: node IDs must be 0..N-1 in ascending order.")
+    require(
+      sorted.map(_.id).sameElements(sorted.indices),
+      "Extended tree load failed: node IDs must be 0..N-1 in ascending order.",
+    )
 
     // 2) Create a finalNodes array to hold each rebuilt node by index.
     val finalNodes = new Array[ExtendedNode](sorted.length)
@@ -176,15 +200,18 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
    * Writer for the ExtendedIsolationForestModel, mirroring the style of the standard
    * IsolationForestModelWriter.
    *
-   * @param model The ExtendedIsolationForestModel instance to write.
+   * @param model
+   *   The ExtendedIsolationForestModel instance to write.
    */
   class ExtendedIsolationForestModelWriter(model: ExtendedIsolationForestModel)
-    extends MLWriter with Logging {
+      extends MLWriter
+      with Logging {
 
     /**
      * Main entry point for saving the model. Spark ML calls this automatically.
      *
-     * @param path The file path to the directory where the model should be written.
+     * @param path
+     *   The file path to the directory where the model should be written.
      */
     override def saveImpl(path: String): Unit = {
       // 1) Build up any extra metadata we want to save
@@ -198,18 +225,22 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
     }
 
     /**
-     * Helper method for saving the extended isolation forest ensemble to disk,
-     * closely mirroring the approach in the standard IsolationForestModelWriter.
+     * Helper method for saving the extended isolation forest ensemble to disk, closely mirroring
+     * the approach in the standard IsolationForestModelWriter.
      *
-     * @param path          The path on disk used to save the model.
-     * @param spark         The current SparkSession.
-     * @param extraMetadata Additional metadata to store, e.g. threshold, numSamples, etc.
+     * @param path
+     *   The path on disk used to save the model.
+     * @param spark
+     *   The current SparkSession.
+     * @param extraMetadata
+     *   Additional metadata to store, e.g. threshold, numSamples, etc.
      */
     private def saveImplHelper(path: String, spark: SparkSession, extraMetadata: JObject): Unit = {
 
       saveMetadata(model, path, spark, Some(extraMetadata))
       val dataPath = new Path(path, "data").toString
-      val nodeDataRDD = spark.sparkContext.parallelize(model.extendedIsolationTrees.zipWithIndex.toIndexedSeq)
+      val nodeDataRDD = spark.sparkContext
+        .parallelize(model.extendedIsolationTrees.zipWithIndex.toIndexedSeq)
         .flatMap { case (tree, treeID) => ExtendedEnsembleNodeData.build(tree, treeID) }
       logInfo(s"Saving ExtendedIsolationForestModel tree data to $dataPath")
 
@@ -224,20 +255,24 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
   class ExtendedIsolationForestModelReader extends MLReader[ExtendedIsolationForestModel] {
 
     /**
-     * Helper method for loading an extended isolation forest ensemble from disk.
-     * It reads the Avro node data, groups by treeID, applies the provided buildTree
-     * function to reconstruct a root ExtendedNode for each tree, and returns them.
+     * Helper method for loading an extended isolation forest ensemble from disk. It reads the Avro
+     * node data, groups by treeID, applies the provided buildTree function to reconstruct a root
+     * ExtendedNode for each tree, and returns them.
      *
-     * @param path      Path to the model directory.
-     * @param spark     The SparkSession object.
-     * @param buildTree A function that takes an array of ExtendedNodeData and returns an ExtendedNode.
-     * @return An Array of ExtendedNode, each the root node of one extended isolation tree.
+     * @param path
+     *   Path to the model directory.
+     * @param spark
+     *   The SparkSession object.
+     * @param buildTree
+     *   A function that takes an array of ExtendedNodeData and returns an ExtendedNode.
+     * @return
+     *   An Array of ExtendedNode, each the root node of one extended isolation tree.
      */
     private def loadTrees(
-                           path: String,
-                           spark: SparkSession,
-                           buildTree: Array[ExtendedNodeData] => ExtendedNode
-                         ): Array[ExtendedNode] = {
+      path: String,
+      spark: SparkSession,
+      buildTree: Array[ExtendedNodeData] => ExtendedNode,
+    ): Array[ExtendedNode] = {
 
       import spark.implicits._
 
@@ -267,14 +302,17 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
     /**
      * Load an ExtendedIsolationForestModel from a given path.
      *
-     * @param path The directory path containing metadata/ and data/ subdirs.
-     * @return A fully reconstructed ExtendedIsolationForestModel.
+     * @param path
+     *   The directory path containing metadata/ and data/ subdirs.
+     * @return
+     *   A fully reconstructed ExtendedIsolationForestModel.
      */
     override def load(path: String): ExtendedIsolationForestModel = {
       implicit val format = DefaultFormats
 
       // 1) Load metadata and verify the class name
-      val expectedClassName = "com.linkedin.relevance.isolationforest.extended.ExtendedIsolationForestModel"
+      val expectedClassName =
+        "com.linkedin.relevance.isolationforest.extended.ExtendedIsolationForestModel"
       val metadata = loadMetadata(path, sparkSession, expectedClassName)
 
       // 2) Extract basic parameters from metadata
@@ -294,7 +332,7 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
         uid = metadata.uid,
         extendedIsolationTrees = extendedTrees,
         numSamples = numSamples,
-        numFeatures = numFeatures
+        numFeatures = numFeatures,
       )
 
       // 5) Restore spark.ml Params from metadata, then set the outlier threshold
