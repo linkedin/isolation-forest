@@ -18,16 +18,10 @@ logger = logging.getLogger(__name__)
 
 class ExtendedIsolationForestConverter:
     """
-    Demonstration of using ONNX "Loop" to implement multi-feature hyperplane splits
-    in an Extended Isolation Forest.
+    Extended Isolation Forest in ONNX, single-row only.
 
-    Key Points:
-      - We have two state variables in the loop: (curNodeId, pathLen).
-        The subgraph body has 3 outputs: [cond_out, curNodeId_out, pathLen_out].
-      - The top-level loop node must produce 2 final outputs for these states.
-      - Each tree references a separate "tree_i_trip_count_out" so multi-tree
-        topological ordering works properly.
-      - Squeeze must pass axes as a second input in opset13, not an attribute.
+    Key fix: For norms, we only squeeze axis=0 so final shape is [1], not [].
+    That way, Concat(axis=0) forms a [nFeatures] vector rather than rank-0 scalars.
     """
 
     def __init__(self, model_file_path: str, metadata_file_path: str):
@@ -67,10 +61,7 @@ class ExtendedIsolationForestConverter:
         )
 
     def convert(self) -> ModelProto:
-        """
-        Builds a partial ONNX model referencing loop inputs. We do NOT call checker.check_model here.
-        The final check is done in convert_and_save().
-        """
+        # Main input
         features_info = helper.make_tensor_value_info(
             "features", TensorProto.FLOAT, [None, self.num_features]
         )
@@ -78,27 +69,19 @@ class ExtendedIsolationForestConverter:
         main_nodes: List[NodeProto] = []
         tree_outputs = []
 
-        # 1) Build a Loop node for each tree
+        # 1) Build a loop for each tree
         for i in range(self.num_trees):
-            # First define the node table constant
             node_table_const_name = f"tree_{i}_nodes"
             self._append_tree_table_constant(i, main_nodes, node_table_const_name)
 
-            # The loop will produce two final states => [finalCurNodeId, finalPathLen].
-            dummy_cur_node = f"tree_{i}_dummyCurNode"
             path_len_output_name = f"tree_{i}_pathLen"
-
             loop_node = self._make_loop_node_for_tree(
-                tree_id=i,
-                node_table=node_table_const_name,
-                output_names=[dummy_cur_node, path_len_output_name]
+                i, node_table_const_name, path_len_output_name
             )
             main_nodes.append(loop_node)
-
-            # We only need pathLen for summation
             tree_outputs.append(path_len_output_name)
 
-        # 2) If multiple trees => sum => sum_path_len
+        # 2) Sum path lengths
         if len(tree_outputs) > 1:
             sum_path_name = "sum_path_len"
             main_nodes.append(helper.make_node(
@@ -109,7 +92,7 @@ class ExtendedIsolationForestConverter:
         else:
             sum_path_name = tree_outputs[0]
 
-        # 3) average path len => expected_path_len
+        # 3) average => expected_path_len
         expected_path_len = "expected_path_len"
         denom_const_name = "trees_count_const"
         main_nodes.append(helper.make_node(
@@ -117,7 +100,7 @@ class ExtendedIsolationForestConverter:
             inputs=[],
             outputs=[denom_const_name],
             value=helper.make_tensor(
-                name=denom_const_name+"_val",
+                name=denom_const_name + "_val",
                 data_type=TensorProto.FLOAT,
                 dims=[],
                 vals=[float(self.num_trees)]
@@ -137,7 +120,7 @@ class ExtendedIsolationForestConverter:
             inputs=[],
             outputs=[cn_const_name],
             value=helper.make_tensor(
-                name=cn_const_name+"_val",
+                name=cn_const_name + "_val",
                 data_type=TensorProto.FLOAT,
                 dims=[],
                 vals=[c_n_val]
@@ -209,12 +192,11 @@ class ExtendedIsolationForestConverter:
             to=TensorProto.INT32
         ))
 
-        # Final outputs
         outlier_score_info = helper.make_tensor_value_info(
-            'outlier_score', TensorProto.FLOAT, [None, 1]
+            "outlier_score", TensorProto.FLOAT, [None, 1]
         )
         predicted_label_info = helper.make_tensor_value_info(
-            'predicted_label', TensorProto.INT32, [None, 1]
+            "predicted_label", TensorProto.INT32, [None, 1]
         )
 
         graph = helper.make_graph(
@@ -227,105 +209,19 @@ class ExtendedIsolationForestConverter:
         model = helper.make_model(
             graph,
             producer_name="ExtendedIFLoopConverter",
-            opset_imports=[helper.make_opsetid('', 13)]
-        )
-        logger.info(
-            "Built partial ONNX model with 2-state loop. No checker call yet."
+            opset_imports=[helper.make_opsetid("", 13)]
         )
         return model
 
-    def convert_and_save(self, output_path: str):
-        """
-        Build partial model => define loop constants => final check => save
-        """
-        model = self.convert()
-        graph = model.graph
-
-        # We must prepend loop init nodes and trip_count nodes
-        existing_nodes = list(graph.node)
-        graph.ClearField("node")
-
-        # 1) Shared loop init states
-        loop_cond_node = helper.make_node(
-            "Constant",
-            inputs=[],
-            outputs=["loop_cond_init"],
-            value=helper.make_tensor(
-                name="loop_cond_init_val",
-                data_type=TensorProto.BOOL,
-                dims=[],
-                vals=[True]
-            )
-        )
-        loop_nodeId_node = helper.make_node(
-            "Constant",
-            inputs=[],
-            outputs=["loop_init_nodeId"],
-            value=helper.make_tensor(
-                name="loop_init_nodeId_val",
-                data_type=TensorProto.INT64,
-                dims=[],
-                vals=[0]
-            )
-        )
-        loop_pathLen_node = helper.make_node(
-            "Constant",
-            inputs=[],
-            outputs=["loop_init_pathLen"],
-            value=helper.make_tensor(
-                name="loop_init_pathLen_val",
-                data_type=TensorProto.FLOAT,
-                dims=[],
-                vals=[0.0]
-            )
-        )
-
-        # 2) One trip_count constant per tree
-        trip_count_nodes = []
-        for i in range(self.num_trees):
-            node_name = f"tree_{i}_trip_count_out"
-            big_const = helper.make_node(
-                "Constant",
-                inputs=[],
-                outputs=[node_name],
-                value=helper.make_tensor(
-                    name=f"trip_count_tensor_{i}",
-                    data_type=TensorProto.INT64,
-                    dims=[],
-                    vals=[999999]
-                )
-            )
-            trip_count_nodes.append(big_const)
-
-        new_nodes = [loop_cond_node, loop_nodeId_node, loop_pathLen_node] + trip_count_nodes
-
-        # Prepend them
-        graph.node.extend(new_nodes)
-        graph.node.extend(existing_nodes)
-
-        # Now do the final check
-        onnx.checker.check_model(model)
-        onnx.save_model(model, output_path)
-        logger.info(f"Saved extended iForest ONNX to {output_path}")
-
-    def _append_tree_table_constant(
-            self,
-            tree_id: int,
-            main_nodes: List[NodeProto],
-            output_name: str
-    ):
-        """
-        Creates a 2D constant node with shape=[num_nodes, 4 + num_features], storing
-         col0=leftChild, col1=rightChild, col2=offset, col3=numInstances, col4..=norm
-        """
+    def _append_tree_table_constant(self, tree_id: int, main_nodes: List[NodeProto], output_name: str):
         node_array = self.trees_data[tree_id]
         num_nodes = len(node_array)
         if num_nodes == 0:
-            # trivial
+            # Edge case: empty tree
             tensor = helper.make_tensor(
-                name=output_name+"_val",
+                name=output_name + "_val",
                 data_type=TensorProto.FLOAT,
-                dims=[1,1],
+                dims=[1, 1],
                 vals=[0.0]
             )
             cnode = helper.make_node(
@@ -339,21 +235,18 @@ class ExtendedIsolationForestConverter:
 
         dim_per_node = 4 + self.num_features
         data_floats: List[float] = []
-
         for nd in node_array:
             leftC = float(nd['leftChild'])
             rightC = float(nd['rightChild'])
             offset = float(nd.get('offset', 0.0))
             numInst = float(nd['numInstances'])
             norm_arr = nd.get('norm', [])
-            # pad if needed
             padded_norm = list(norm_arr) + [0.0]*(self.num_features - len(norm_arr))
-
             row = [leftC, rightC, offset, numInst] + padded_norm
             data_floats.extend(row)
 
         tensor = helper.make_tensor(
-            name=output_name+"_val",
+            name=output_name + "_val",
             data_type=TensorProto.FLOAT,
             dims=[num_nodes, dim_per_node],
             vals=data_floats
@@ -366,27 +259,20 @@ class ExtendedIsolationForestConverter:
         )
         main_nodes.append(cnode)
 
-    def _make_loop_node_for_tree(
-            self,
-            tree_id: int,
-            node_table: str,
-            output_names: List[str]
-    ) -> NodeProto:
-        """
-        Each loop has 4 inputs: [trip_count, cond_init, nodeId_init, pathLen_init]
-        and 2 final outputs: [finalCurNodeId, finalPathLen].
-        """
+    def _make_loop_node_for_tree(self, tree_id: int, node_table: str, path_len_output_name: str) -> NodeProto:
         body_graph = self._make_loop_body_graph(f"Tree_{tree_id}_loopBody", node_table)
+        trip_count_const = f"tree_{tree_id}_trip_count"
+        trip_count_val = 999999
 
         loop_node = helper.make_node(
             "Loop",
             inputs=[
-                self._const_i64_scalar(f"tree_{tree_id}_trip_count", 999999),
+                self._const_i64_scalar(trip_count_const, trip_count_val),
                 "loop_cond_init",
                 "loop_init_nodeId",
                 "loop_init_pathLen"
             ],
-            outputs=output_names,
+            outputs=[f"ignore_nodeId_{tree_id}", path_len_output_name],
             name=f"tree_{tree_id}_loop"
         )
         loop_node.attribute.extend([
@@ -395,120 +281,133 @@ class ExtendedIsolationForestConverter:
         return loop_node
 
     def _make_loop_body_graph(self, graph_name: str, node_table_name: str) -> GraphProto:
-        """
-        Loop body subgraph with 4 inputs => 3 outputs:
-          inputs: iter_in(int64), cond_in(bool), curNodeId_in(int64), pathLen_in(float)
-          outputs: cond_out(bool), curNodeId_out(int64), pathLen_out(float)
-        """
+        # 4 inputs => (cond_out, curNodeId_out, pathLen_out)
         iter_in = helper.make_tensor_value_info("iter_in", TensorProto.INT64, [])
         cond_in = helper.make_tensor_value_info("cond_in", TensorProto.BOOL, [])
         curNodeId_in = helper.make_tensor_value_info("curNodeId_in", TensorProto.INT64, [])
         pathLen_in = helper.make_tensor_value_info("pathLen_in", TensorProto.FLOAT, [])
 
-        cond_out_info = helper.make_tensor_value_info("cond_out", TensorProto.BOOL, [])
-        curNodeId_out_info = helper.make_tensor_value_info("curNodeId_out", TensorProto.INT64, [])
-        pathLen_out_info = helper.make_tensor_value_info("pathLen_out", TensorProto.FLOAT, [])
-
         nodes: List[NodeProto] = []
 
-        # axes for Squeeze
-        axes_name = "axes_0_1"
-        axes_tensor = helper.make_tensor(
-            name="axes_tensor_0_1",
-            data_type=TensorProto.INT64,
-            dims=[2],
-            vals=[0,1]
-        )
-        axes_const_node = helper.make_node(
+        # (A) Unsqueeze nodeId => gather => shape [1,4+num_features]
+        uq_axes = helper.make_node(
             "Constant",
             inputs=[],
-            outputs=[axes_name],
-            value=axes_tensor
+            outputs=["uq_axes"],
+            value=helper.make_tensor("uq_axes_val", TensorProto.INT64, [1], [0])
         )
-        nodes.append(axes_const_node)
+        nodes.append(uq_axes)
 
-        # gather => shape [1, 4+num_features]
-        gather_node_out = "nodeRow"
-        nodes.append(helper.make_node(
+        nodeId_1d = "nodeId_1d"
+        unsq_node = helper.make_node(
+            "Unsqueeze",
+            inputs=["curNodeId_in", "uq_axes"],
+            outputs=[nodeId_1d]
+        )
+        nodes.append(unsq_node)
+
+        gather_out = "nodeRow"
+        gnode = helper.make_node(
             "Gather",
-            inputs=[node_table_name, "curNodeId_in"],
-            outputs=[gather_node_out],
+            inputs=[node_table_name, nodeId_1d],
+            outputs=[gather_out],
             axis=0
-        ))
+        )
+        nodes.append(gnode)
 
-        # split => columns
-        split_cols = [f"col{i}" for i in range(4 + self.num_features)]
-        nodes.append(helper.make_node(
+        # (B) Split => col0..3 + norms => Squeeze
+        dim_count = 4 + self.num_features
+        col_names = [f"col{i}" for i in range(dim_count)]
+        split_node = helper.make_node(
             "Split",
-            inputs=[gather_node_out],
-            outputs=split_cols,
+            inputs=[gather_out],
+            outputs=col_names,
             axis=1
-        ))
+        )
+        nodes.append(split_node)
 
         leftChild_f = "leftChild_f"
         rightChild_f = "rightChild_f"
-        offset_name = "offset"
-        numInst_name = "numInstances"
-        norm_outs = [f"norm{i}" for i in range(self.num_features)]
+        offset_f = "offset_f"
+        numInst_f = "numInst_f"
+        norm_scalars = [f"norm{i}_sc" for i in range(self.num_features)]
 
-        # squeeze each column => pass axes
-        nodes.append(self._squeeze_2d(split_cols[0], leftChild_f, axes_name))
-        nodes.append(self._squeeze_2d(split_cols[1], rightChild_f, axes_name))
-        nodes.append(self._squeeze_2d(split_cols[2], offset_name, axes_name))
-        nodes.append(self._squeeze_2d(split_cols[3], numInst_name, axes_name))
+        # We want leftChild_f, rightChild_f, offset_f, numInst_f as scalars => squeeze both dims
+        # but for norms, we want shape [1], so we only squeeze axis=0 => from shape [1,1] => shape [1].
+        def sqz_both(inp, out):
+            cAxes = out + "_axes"
+            c1 = helper.make_node(
+                "Constant",
+                inputs=[],
+                outputs=[cAxes],
+                value=helper.make_tensor(cAxes+"_val", TensorProto.INT64, [2], [0,1])
+            )
+            c2 = helper.make_node(
+                "Squeeze",
+                inputs=[inp, cAxes],
+                outputs=[out]
+            )
+            return [c1, c2]
+
+        def sqz_one(inp, out):
+            cAxes = out + "_axes"
+            c1 = helper.make_node(
+                "Constant",
+                inputs=[],
+                outputs=[cAxes],
+                value=helper.make_tensor(cAxes+"_val", TensorProto.INT64, [1], [0])
+            )
+            c2 = helper.make_node(
+                "Squeeze",
+                inputs=[inp, cAxes],
+                outputs=[out]
+            )
+            return [c1, c2]
+
+        # For the first 4:
+        nodes.extend(sqz_both(col_names[0], leftChild_f))
+        nodes.extend(sqz_both(col_names[1], rightChild_f))
+        nodes.extend(sqz_both(col_names[2], offset_f))
+        nodes.extend(sqz_both(col_names[3], numInst_f))
+
         for i in range(self.num_features):
-            nodes.append(self._squeeze_2d(split_cols[i+4], norm_outs[i], axes_name))
+            nodes.extend(sqz_one(col_names[i+4], norm_scalars[i]))
 
-        # cast leftChild/rightChild => int64 => check leaf
+        # cast left,right => int64 => sum => eq -2 => eq_leaf
         leftChild_i = "leftChild_i"
-        rightChild_i = "rightChild_i"
-        nodes.append(helper.make_node(
-            "Cast",
-            inputs=[leftChild_f],
-            outputs=[leftChild_i],
-            to=TensorProto.INT64
-        ))
-        nodes.append(helper.make_node(
-            "Cast",
-            inputs=[rightChild_f],
-            outputs=[rightChild_i],
-            to=TensorProto.INT64
-        ))
+        cast_l = helper.make_node("Cast", inputs=[leftChild_f], outputs=[leftChild_i], to=TensorProto.INT64)
+        nodes.append(cast_l)
 
-        sum_lr = "sumLR"
-        nodes.append(helper.make_node(
-            "Add",
-            inputs=[leftChild_i, rightChild_i],
-            outputs=[sum_lr]
-        ))
-        neg2_const = "neg2_const"
-        nodes.append(helper.make_node(
+        rightChild_i = "rightChild_i"
+        cast_r = helper.make_node("Cast", inputs=[rightChild_f], outputs=[rightChild_i], to=TensorProto.INT64)
+        nodes.append(cast_r)
+
+        sum_lr = "sum_lr"
+        nodes.append(helper.make_node("Add", inputs=[leftChild_i, rightChild_i], outputs=[sum_lr]))
+
+        neg2_c = helper.make_node(
             "Constant",
             inputs=[],
-            outputs=[neg2_const],
-            value=helper.make_tensor(
-                name="neg2_val",
-                data_type=TensorProto.INT64,
-                dims=[],
-                vals=[-2]
-            )
-        ))
+            outputs=["neg2_const"],
+            value=helper.make_tensor("neg2_val", TensorProto.INT64, [], [-2])
+        )
+        nodes.append(neg2_c)
+
         eq_leaf = "eq_leaf"
         nodes.append(helper.make_node(
             "Equal",
-            inputs=[sum_lr, neg2_const],
+            inputs=[sum_lr, "neg2_const"],
             outputs=[eq_leaf]
         ))
 
-        # If(leaf) => pathLen+= avgPL(numInst), else => +1
-        leaf_sg = self._make_leaf_subgraph("leafSubgraph")
-        not_leaf_sg = self._make_notleaf_subgraph("notLeafSubgraph")
+        # If => pathLen => tmpPathLen
         if_leaf_node = helper.make_node(
             "If",
             inputs=[eq_leaf],
             outputs=["tmpPathLen"],
-            then_branch=leaf_sg,
-            else_branch=not_leaf_sg
+            name="if_leaf",
+            then_branch=self._make_leaf_subgraph(),
+            else_branch=self._make_notleaf_subgraph()
         )
         nodes.append(if_leaf_node)
 
@@ -519,6 +418,7 @@ class ExtendedIsolationForestConverter:
             outputs=[pathLen_next]
         ))
 
+        # cond_out => not(eq_leaf)
         not_leaf_bool = "not_leaf_bool"
         nodes.append(helper.make_node(
             "Not",
@@ -531,18 +431,16 @@ class ExtendedIsolationForestConverter:
             outputs=["cond_out"]
         ))
 
-        # nextNode => If(not_leaf) => dot<offset => left or right
-        nextNode_if_sg = self._build_nextNode_subgraph(
-            "chooseChildSubgraph", offset_name, norm_outs, leftChild_f, rightChild_f
-        )
-        if_next_node = helper.make_node(
+        # If => chooseChild => else => -1 => curNodeId_out
+        if_next = helper.make_node(
             "If",
             inputs=[not_leaf_bool],
             outputs=["curNodeId_out"],
-            then_branch=nextNode_if_sg,
-            else_branch=self._make_const_int_subgraph("elseNodeMinusOne", -1)
+            name="if_nextNode",
+            then_branch=self._make_chooseChild_subgraph(norm_scalars),
+            else_branch=self._make_minusOne_subgraph()
         )
-        nodes.append(if_next_node)
+        nodes.append(if_next)
 
         # pathLen_out => pathLen_next
         nodes.append(helper.make_node(
@@ -551,75 +449,134 @@ class ExtendedIsolationForestConverter:
             outputs=["pathLen_out"]
         ))
 
+        # Value infos
+        extra_info = [
+            helper.make_tensor_value_info("pathLen_in", TensorProto.FLOAT, []),
+            helper.make_tensor_value_info("leftChild_f", TensorProto.FLOAT, []),
+            helper.make_tensor_value_info("rightChild_f", TensorProto.FLOAT, []),
+            helper.make_tensor_value_info("offset_f", TensorProto.FLOAT, []),
+            helper.make_tensor_value_info("numInst_f", TensorProto.FLOAT, []),
+            helper.make_tensor_value_info("leftChild_i", TensorProto.INT64, []),
+            helper.make_tensor_value_info("rightChild_i", TensorProto.INT64, []),
+            helper.make_tensor_value_info(eq_leaf, TensorProto.BOOL, []),
+            helper.make_tensor_value_info("sum_lr", TensorProto.INT64, []),
+            helper.make_tensor_value_info("features", TensorProto.FLOAT, [None, self.num_features]),
+        ]
+        for nm in norm_scalars:
+            # each norm is shape [1]
+            extra_info.append(helper.make_tensor_value_info(nm, TensorProto.FLOAT, [1]))
+
+        cond_out_vi = helper.make_tensor_value_info("cond_out", TensorProto.BOOL, [])
+        curNodeId_out_vi = helper.make_tensor_value_info("curNodeId_out", TensorProto.INT64, [])
+        pathLen_out_vi = helper.make_tensor_value_info("pathLen_out", TensorProto.FLOAT, [])
+
         body_graph = helper.make_graph(
             name=graph_name,
             nodes=nodes,
             inputs=[iter_in, cond_in, curNodeId_in, pathLen_in],
-            outputs=[cond_out_info, curNodeId_out_info, pathLen_out_info]
+            outputs=[cond_out_vi, curNodeId_out_vi, pathLen_out_vi],
+            value_info=extra_info
         )
         return body_graph
 
-    def _squeeze_2d(self, inp: str, out: str, axes_input: str) -> NodeProto:
+    def _make_leaf_subgraph(self) -> GraphProto:
         """
-        In opset13, we pass axes as a second input to Squeeze
+        eq_leaf => pathLen_in + avgPL(numInst_f)
+        Captures pathLen_in, numInst_f from parent. No formal inputs.
         """
-        return helper.make_node(
-            "Squeeze",
-            inputs=[inp, axes_input],
-            outputs=[out]
-        )
-
-    def _build_nextNode_subgraph(self,
-                                 name: str,
-                                 offset_name: str,
-                                 norm_outs: List[str],
-                                 leftC: str,
-                                 rightC: str) -> GraphProto:
-        """
-        dot= sum(norm[i]*features[i]), if dot<offset => leftC else rightC => cast => nextNode
-        """
-        offset_in = helper.make_tensor_value_info(offset_name, TensorProto.FLOAT, [])
-        left_in = helper.make_tensor_value_info(leftC, TensorProto.FLOAT, [])
-        right_in = helper.make_tensor_value_info(rightC, TensorProto.FLOAT, [])
-        feats_in = helper.make_tensor_value_info("subg_features", TensorProto.FLOAT, [None, self.num_features])
-        nextNode_out = helper.make_tensor_value_info("nextNode", TensorProto.INT64, [])
-
+        out_vi = helper.make_tensor_value_info("subg_out", TensorProto.FLOAT, [])
         nodes: List[NodeProto] = []
 
-        # define a local axes= [0,1]
-        axes_name = "axes_0_1_subg"
-        axes_tensor = helper.make_tensor(
-            name="axes_tensor_0_1_subg",
-            data_type=TensorProto.INT64,
-            dims=[2],
-            vals=[0,1]
+        chain = self._build_avgpathlen_inline("numInst_f", "avgpl_out")
+        nodes.extend(chain)
+        nodes.append(helper.make_node(
+            "Add",
+            inputs=["pathLen_in", "avgpl_out"],
+            outputs=["subg_out"]
+        ))
+
+        subg = helper.make_graph(
+            name="leafSubgraph",
+            nodes=nodes,
+            inputs=[],
+            outputs=[out_vi],
+            value_info=[
+                helper.make_tensor_value_info("pathLen_in", TensorProto.FLOAT, []),
+                helper.make_tensor_value_info("numInst_f", TensorProto.FLOAT, []),
+            ]
         )
-        axes_const_node = helper.make_node(
+        return subg
+
+    def _make_notleaf_subgraph(self) -> GraphProto:
+        """
+        not-leaf => pathLen_in + 1
+        """
+        out_vi = helper.make_tensor_value_info("subg_out", TensorProto.FLOAT, [])
+        nodes: List[NodeProto] = []
+
+        one_c = helper.make_node(
             "Constant",
             inputs=[],
-            outputs=[axes_name],
-            value=axes_tensor
+            outputs=["one_c"],
+            value=helper.make_tensor("one_c_val", TensorProto.FLOAT, [], [1.0])
         )
-        nodes.append(axes_const_node)
+        nodes.append(one_c)
 
-        # Concat norms => shape [num_features]
-        norm_concat_out = "norm_concat"
+        nodes.append(helper.make_node(
+            "Add",
+            inputs=["pathLen_in", "one_c"],
+            outputs=["subg_out"]
+        ))
+
+        subg = helper.make_graph(
+            name="notLeafSubgraph",
+            nodes=nodes,
+            inputs=[],
+            outputs=[out_vi],
+            value_info=[
+                helper.make_tensor_value_info("pathLen_in", TensorProto.FLOAT, []),
+                helper.make_tensor_value_info("numInst_f", TensorProto.FLOAT, []),
+            ]
+        )
+        return subg
+
+    def _make_chooseChild_subgraph(self, norm_names: List[str]) -> GraphProto:
+        """
+        not_leaf => dot = sum(norm_i * feats_squeezed) => if => left or right => cast => subg_out
+        Each norm_i is shape [1]. We Concat them along axis=0 => shape [nFeatures].
+        """
+        out_vi = helper.make_tensor_value_info("subg_out", TensorProto.INT64, [])
+        nodes: List[NodeProto] = []
+
+        # Squeeze features => shape [num_features]
+        sqz_axes_c = helper.make_node(
+            "Constant",
+            inputs=[],
+            outputs=["chooseFeats_squeezeAxes"],
+            value=helper.make_tensor("chooseFeats_squeezeAxes_val", TensorProto.INT64, [1], [0])
+        )
+        nodes.append(sqz_axes_c)
+
+        feats_squeezed = "feats_squeezed"
+        nodes.append(helper.make_node(
+            "Squeeze",
+            inputs=["features", "chooseFeats_squeezeAxes"],
+            outputs=[feats_squeezed]
+        ))
+
+        # Concat the norm_i => shape [nFeatures], axis=0
+        norm_concat = "norm_concat"
         nodes.append(helper.make_node(
             "Concat",
-            inputs=norm_outs,
-            outputs=[norm_concat_out],
+            inputs=norm_names,
+            outputs=[norm_concat],
             axis=0
         ))
 
-        # Squeeze features => shape [num_features]
-        feats_squeezed = "feats_squeezed"
-        nodes.append(self._squeeze_2d("subg_features", feats_squeezed, axes_name))
-
-        # dot => Mul => ReduceSum
         mul_out = "mul_out"
         nodes.append(helper.make_node(
             "Mul",
-            inputs=[norm_concat_out, feats_squeezed],
+            inputs=[norm_concat, feats_squeezed],
             outputs=[mul_out]
         ))
         dot_name = "dot_name"
@@ -630,110 +587,102 @@ class ExtendedIsolationForestConverter:
             keepdims=0
         ))
 
-        # cond => dot < offset
         cond_dot = "cond_dot"
         nodes.append(helper.make_node(
             "Less",
-            inputs=[dot_name, offset_in.name],
+            inputs=[dot_name, "offset_f"],
             outputs=[cond_dot]
         ))
 
-        # If => pick left or right => cast => nextNode
-        if_node_out = "tmp_nextNodeF"
-        pick_left = self._make_identity_subgraph("pick_left_subg", leftC)
-        pick_right = self._make_identity_subgraph("pick_right_subg", rightC)
-        if_node = helper.make_node(
+        pick_out = "pick_out"
+        pick_if = helper.make_node(
             "If",
             inputs=[cond_dot],
-            outputs=[if_node_out],
-            then_branch=pick_left,
-            else_branch=pick_right
+            outputs=[pick_out],
+            name="pick_if",
+            then_branch=self._make_pick_subgraph(True),
+            else_branch=self._make_pick_subgraph(False)
         )
-        nodes.append(if_node)
+        nodes.append(pick_if)
 
-        cast_out = "cast_nextNode"
+        cast_out = "cast_out"
         nodes.append(helper.make_node(
             "Cast",
-            inputs=[if_node_out],
+            inputs=[pick_out],
             outputs=[cast_out],
             to=TensorProto.INT64
         ))
         nodes.append(helper.make_node(
             "Identity",
             inputs=[cast_out],
-            outputs=["nextNode"]
+            outputs=["subg_out"]
         ))
 
         subg = helper.make_graph(
-            name=name,
-            inputs=[offset_in, left_in, right_in, feats_in]
-                   + [helper.make_tensor_value_info(x, TensorProto.FLOAT, []) for x in norm_outs],
-            outputs=[nextNode_out],
-            nodes=nodes
+            name="chooseChildSubgraph",
+            nodes=nodes,
+            inputs=[],
+            outputs=[out_vi],
+            value_info=[
+                           helper.make_tensor_value_info("offset_f", TensorProto.FLOAT, []),
+                           helper.make_tensor_value_info("leftChild_f", TensorProto.FLOAT, []),
+                           helper.make_tensor_value_info("rightChild_f", TensorProto.FLOAT, []),
+                           helper.make_tensor_value_info("features", TensorProto.FLOAT, [None, self.num_features]),
+                       ] + [helper.make_tensor_value_info(n, TensorProto.FLOAT, [1]) for n in norm_names]
         )
         return subg
 
-    def _make_leaf_subgraph(self, name: str) -> GraphProto:
-        pathLen_in = helper.make_tensor_value_info("pathLen_in", TensorProto.FLOAT, [])
-        numInst_in = helper.make_tensor_value_info("numInstances", TensorProto.FLOAT, [])
-        pathLen_out = helper.make_tensor_value_info("pathLen_out", TensorProto.FLOAT, [])
+    def _make_pick_subgraph(self, pick_left: bool) -> GraphProto:
+        out_vi = helper.make_tensor_value_info("subg_out", TensorProto.FLOAT, [])
+        chosen = "leftChild_f" if pick_left else "rightChild_f"
 
-        nodes: List[NodeProto] = []
-
-        # inline formula => avgpl
-        avgpl_out = "avgpl_out"
-        chain_nodes = self._build_avgpathlen_inline("numInstances", avgpl_out)
-        nodes.extend(chain_nodes)
-
-        add_node = helper.make_node(
-            "Add",
-            inputs=["pathLen_in", avgpl_out],
-            outputs=["pathLen_out"]
+        node = helper.make_node(
+            "Identity",
+            inputs=[chosen],
+            outputs=["subg_out"]
         )
-        nodes.append(add_node)
-
         subg = helper.make_graph(
-            name=name,
-            inputs=[pathLen_in, numInst_in],
-            outputs=[pathLen_out],
-            nodes=nodes
+            name=("pick_left" if pick_left else "pick_right"),
+            nodes=[node],
+            inputs=[],
+            outputs=[out_vi],
+            value_info=[
+                helper.make_tensor_value_info("offset_f", TensorProto.FLOAT, []),
+                helper.make_tensor_value_info("leftChild_f", TensorProto.FLOAT, []),
+                helper.make_tensor_value_info("rightChild_f", TensorProto.FLOAT, []),
+                helper.make_tensor_value_info("features", TensorProto.FLOAT, [None, self.num_features]),
+            ]
         )
         return subg
 
-    def _make_notleaf_subgraph(self, name: str) -> GraphProto:
-        pathLen_in = helper.make_tensor_value_info("pathLen_in", TensorProto.FLOAT, [])
-        numInst_in = helper.make_tensor_value_info("numInstances", TensorProto.FLOAT, [])
-        pathLen_out = helper.make_tensor_value_info("pathLen_out", TensorProto.FLOAT, [])
-
-        one_val = helper.make_node(
+    def _make_minusOne_subgraph(self) -> GraphProto:
+        out_vi = helper.make_tensor_value_info("subg_out", TensorProto.INT64, [])
+        node = helper.make_node(
             "Constant",
             inputs=[],
-            outputs=["one_val"],
+            outputs=["subg_out"],
             value=helper.make_tensor(
-                name="one_val_tensor",
-                data_type=TensorProto.FLOAT,
+                name="minusOne_val",
+                data_type=TensorProto.INT64,
                 dims=[],
-                vals=[1.0]
+                vals=[-1]
             )
         )
-        add_node = helper.make_node(
-            "Add",
-            inputs=["pathLen_in", "one_val"],
-            outputs=["pathLen_out"]
-        )
-
         subg = helper.make_graph(
-            name=name,
-            inputs=[pathLen_in, numInst_in],
-            outputs=[pathLen_out],
-            nodes=[one_val, add_node]
+            name="elseMinusOne",
+            nodes=[node],
+            inputs=[],
+            outputs=[out_vi],
+            value_info=[
+                helper.make_tensor_value_info("offset_f", TensorProto.FLOAT, []),
+                helper.make_tensor_value_info("leftChild_f", TensorProto.FLOAT, []),
+                helper.make_tensor_value_info("rightChild_f", TensorProto.FLOAT, []),
+                helper.make_tensor_value_info("features", TensorProto.FLOAT, [None, self.num_features]),
+            ]
         )
         return subg
 
     def _build_avgpathlen_inline(self, numInst_name: str, output_name: str) -> List[NodeProto]:
-        """
-        avgPL(n) = 2*(ln(n-1)+gamma) - 2*(n-1)/n ignoring n<=1
-        """
         nodes: List[NodeProto] = []
 
         gamma_val = 0.5772156649
@@ -743,7 +692,7 @@ class ExtendedIsolationForestConverter:
             inputs=[],
             outputs=[gamma_name],
             value=helper.make_tensor(
-                name=gamma_name+"_val",
+                name=gamma_name + "_val",
                 data_type=TensorProto.FLOAT,
                 dims=[],
                 vals=[gamma_val]
@@ -756,7 +705,7 @@ class ExtendedIsolationForestConverter:
             inputs=[],
             outputs=[two_name],
             value=helper.make_tensor(
-                name=two_name+"_tens",
+                name=two_name + "_tens",
                 data_type=TensorProto.FLOAT,
                 dims=[],
                 vals=[2.0]
@@ -769,7 +718,7 @@ class ExtendedIsolationForestConverter:
             inputs=[],
             outputs=[one_name],
             value=helper.make_tensor(
-                name=one_name+"_tens",
+                name=one_name + "_tens",
                 data_type=TensorProto.FLOAT,
                 dims=[],
                 vals=[1.0]
@@ -823,37 +772,77 @@ class ExtendedIsolationForestConverter:
             inputs=[partial1, partial2],
             outputs=[output_name]
         ))
+
         return nodes
 
-    def _make_identity_subgraph(self, name: str, input_name: str) -> GraphProto:
-        vin = helper.make_tensor_value_info(input_name, TensorProto.FLOAT, [])
-        vout = helper.make_tensor_value_info("out_val", TensorProto.FLOAT, [])
-        node = helper.make_node("Identity", inputs=[input_name], outputs=["out_val"])
-        return helper.make_graph([node], name, [vin], [vout])
-
-    def _make_const_int_subgraph(self, name: str, val: int) -> GraphProto:
-        out_info = helper.make_tensor_value_info("out_val", TensorProto.INT64, [])
-        node = helper.make_node(
-            "Constant",
-            inputs=[],
-            outputs=["out_val"],
-            value=helper.make_tensor(
-                name=name+"_val",
-                data_type=TensorProto.INT64,
-                dims=[],
-                vals=[val]
-            )
-        )
-        return helper.make_graph([node], name, [], [out_info])
-
     def _const_i64_scalar(self, name: str, val: int) -> str:
-        """
-        Return the symbolic name, e.g. "tree_0_trip_count_out".
-        We'll define one for each tree in convert_and_save().
-        """
-        return name+"_out"
+        return name + "_out"
 
     def _avg_path_len_formula(self, n: int) -> float:
         if n <= 1:
             return 0.0
-        return 2.0 * (np.log(n - 1.0) + np.euler_gamma) - 2.0 * (n - 1.0) / n
+        return 2.0 * (np.log(n - 1.0) + np.euler_gamma) - (2.0 * (n - 1.0) / n)
+
+    def convert_and_save(self, output_path: str):
+        model = self.convert()
+        graph = model.graph
+
+        # Insert loop-init constants
+        loop_cond_node = helper.make_node(
+            "Constant",
+            inputs=[],
+            outputs=["loop_cond_init"],
+            value=helper.make_tensor(
+                name="loop_cond_init_val",
+                data_type=TensorProto.BOOL,
+                dims=[],
+                vals=[True]
+            )
+        )
+        loop_nodeId_node = helper.make_node(
+            "Constant",
+            inputs=[],
+            outputs=["loop_init_nodeId"],
+            value=helper.make_tensor(
+                name="loop_init_nodeId_val",
+                data_type=TensorProto.INT64,
+                dims=[],
+                vals=[0]
+            )
+        )
+        loop_pathLen_node = helper.make_node(
+            "Constant",
+            inputs=[],
+            outputs=["loop_init_pathLen"],
+            value=helper.make_tensor(
+                name="loop_init_pathLen_val",
+                data_type=TensorProto.FLOAT,
+                dims=[],
+                vals=[0.0]
+            )
+        )
+
+        # define the big int for trip_count for each tree
+        new_nodes = [loop_cond_node, loop_nodeId_node, loop_pathLen_node]
+        for i in range(self.num_trees):
+            trip_count_name = f"tree_{i}_trip_count_out"
+            node = helper.make_node(
+                "Constant",
+                inputs=[],
+                outputs=[trip_count_name],
+                value=helper.make_tensor(
+                    name=f"trip_count_tensor_{i}",
+                    data_type=TensorProto.INT64,
+                    dims=[],
+                    vals=[999999]
+                )
+            )
+            new_nodes.append(node)
+
+        final_nodes = new_nodes + list(graph.node)
+        del graph.node[:]
+        graph.node.extend(final_nodes)
+
+        onnx.checker.check_model(model)
+        onnx.save_model(model, output_path)
+        logger.info(f"Saved extended iForest ONNX (Loop, single-row) to {output_path}")
