@@ -52,8 +52,7 @@ def _roc_auc_score(y_true, y_score):
     # Ensure both classes are present in y_true
     if np.all(y_true == 0) or np.all(y_true == 1):
         raise ValueError(
-            "_roc_auc_score cannot be calculated with only one class present in "
-            + "y_true."
+            "_roc_auc_score cannot be calculated with only one class present in " + "y_true."
         )
 
     # Sort the scores and corresponding true labels
@@ -92,15 +91,11 @@ def _test_converter_on_a_benchmark_dataset(
     last_col_index = num_features
 
     # The last column is the label column.
-    input_dict = {
-        "features": np.delete(input_data, last_col_index, 1).astype(np.float32)
-    }
+    input_dict = {"features": np.delete(input_data, last_col_index, 1).astype(np.float32)}
     actual_labels = input_data[:, last_col_index]
 
     # Load the isolation forest model and metadata files.
-    model_dir_path = (
-        BASE_RESOURCES_PATH / "savedIsolationForestModel" / f"{dataset_name}Model"
-    )
+    model_dir_path = BASE_RESOURCES_PATH / "savedIsolationForestModel" / f"{dataset_name}Model"
     model_file_path = list(model_dir_path.glob("data/*.avro"))[0]
     metadata_file_path = model_dir_path / "metadata" / "part-00000"
 
@@ -154,9 +149,7 @@ class TestIsolationForestConverter:
         :param dataset_name: Name of the dataset to test
         :param expected_auroc: Expected AUROC score for the dataset
         """
-        _test_converter_on_a_benchmark_dataset(
-            dataset_name, expected_auroc, ALLOWED_DIFFERENCE
-        )
+        _test_converter_on_a_benchmark_dataset(dataset_name, expected_auroc, ALLOWED_DIFFERENCE)
 
 
 def test_get_avg_path_len(converter):
@@ -234,9 +227,7 @@ def test_add_node_attrs(converter):
     }
 
     # Call the method to test
-    converter._add_node_attrs(
-        tree_id=0, parent_ids=parent_ids, node_data=node_data, attrs=attrs
-    )
+    converter._add_node_attrs(tree_id=0, parent_ids=parent_ids, node_data=node_data, attrs=attrs)
 
     # Asserts for node attributes
     assert attrs["nodes_treeids"] == [0]
