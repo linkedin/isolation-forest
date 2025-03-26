@@ -18,11 +18,7 @@ def test_isolation_forest_onnx_integration_end_to_end():
     """
 
     base_path = (
-        "/tmp/isolationForestModelAndDataForONNX"
-        + "_"
-        + SPARK_VERSION
-        + "_"
-        + SCALA_VERSION_SHORT
+        "/tmp/isolationForestModelAndDataForONNX" + "_" + SPARK_VERSION + "_" + SCALA_VERSION_SHORT
     )
 
     model_path = os.path.join(base_path, "model")

@@ -139,9 +139,7 @@ class IsolationForestConverter:
             self._create_predicted_label(),
         ]
 
-        outlier_score = helper.make_tensor_value_info(
-            "outlier_score", TensorProto.FLOAT, [None, 1]
-        )
+        outlier_score = helper.make_tensor_value_info("outlier_score", TensorProto.FLOAT, [None, 1])
         predicted_label = helper.make_tensor_value_info(
             "predicted_label", TensorProto.INT32, [None, 1]
         )
@@ -319,9 +317,7 @@ class IsolationForestConverter:
 
         :return: NodeProto object
         """
-        return helper.make_node(
-            op_type="Not", inputs=["less"], outputs=["not"], name="IsOutlier"
-        )
+        return helper.make_node(op_type="Not", inputs=["less"], outputs=["not"], name="IsOutlier")
 
     def _create_predicted_label(self) -> NodeProto:
         """
@@ -369,9 +365,7 @@ class IsolationForestConverter:
             node_id = parent_ids[node_id]
         return depth
 
-    def _add_tree_attrs(
-        self, tree_id: int, record_index: int, attrs: Dict[str, Any]
-    ) -> int:
+    def _add_tree_attrs(self, tree_id: int, record_index: int, attrs: Dict[str, Any]) -> int:
         """
         Add the attributes for each tree to in the Isolation Forest model.
 
@@ -387,10 +381,7 @@ class IsolationForestConverter:
         # root isn't stored.
         parent_ids: Dict[int, int] = {}
 
-        while (
-            record_index < len(self._forest)
-            and self._forest[record_index]["treeID"] == tree_id
-        ):
+        while record_index < len(self._forest) and self._forest[record_index]["treeID"] == tree_id:
             # Each record (obtained from the Avro file) is a node in a tree
             node = self._forest[record_index]
             node_data = node["nodeData"]
@@ -442,9 +433,7 @@ class IsolationForestConverter:
 
         if is_leaf:
             # For a leaf the path length is its depth + an adjustment
-            path_len = self._get_depth(parent_ids, node_id) + self._get_avg_path_len(
-                num_instances
-            )
+            path_len = self._get_depth(parent_ids, node_id) + self._get_avg_path_len(num_instances)
             attrs["target_treeids"].append(tree_id)
             attrs["target_nodeids"].append(node_id)
             attrs["target_ids"].append(0)
