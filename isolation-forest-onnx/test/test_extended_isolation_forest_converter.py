@@ -13,6 +13,7 @@ from isolationforestonnx.extended_isolation_forest_converter import (
 BASE_RESOURCES_PATH = Path(__file__).parent / "resources"
 ALLOWED_DIFFERENCE = 0.02  # Allowed difference from the expected AUROC.
 
+
 def _roc_auc_score(y_true, y_score):
     """
     Compute the Area Under the Receiver Operating Characteristic Curve (ROC AUC).
@@ -38,11 +39,31 @@ def _roc_auc_score(y_true, y_score):
     return auc
 
 
+def _run_batch_single_row(sess, x: np.ndarray):
+    """
+    Runs inference row-by-row on a single-row ONNX model.
+    x is shape [N, num_features].
+    Returns outlier_scores and predicted_labels as arrays of length N.
+    """
+    n = x.shape[0]
+    out_scores = []
+    out_labels = []
+    for i in range(n):
+        row_input = x[i : i + 1, :]  # shape [1, num_features]  # noqa: E203
+        # The model returns outlier_score, predicted_label both shape [1,1]
+        outlier_score, predicted_label = sess.run(None, {"features": row_input.astype(np.float32)})
+        # Flatten them from shape [1,1] => scalar
+        out_scores.append(outlier_score[0, 0])
+        out_labels.append(predicted_label[0, 0])
+
+    return np.array(out_scores), np.array(out_labels)
+
+
 def _test_extended_converter_on_a_benchmark_dataset(
-        dataset_name,
-        expected_auroc,
-        allowed_difference=ALLOWED_DIFFERENCE,
-        test_onnx_save_and_load=True
+    dataset_name,
+    expected_auroc,
+    allowed_difference=ALLOWED_DIFFERENCE,
+    test_onnx_save_and_load=True,
 ):
     """
     Test the Extended Isolation Forest ONNX converter on a benchmark dataset.
@@ -57,13 +78,13 @@ def _test_extended_converter_on_a_benchmark_dataset(
     input_data = np.loadtxt(data_csv, delimiter=",")
     num_features = input_data.shape[1] - 1
     last_col_index = num_features
-    input_dict = {
-        "features": np.delete(input_data, last_col_index, 1).astype(np.float32)
-    }
+    input_dict = {"features": np.delete(input_data, last_col_index, 1).astype(np.float32)}
     actual_labels = input_data[:, last_col_index]
 
     # 2) Load extended iForest model from Avro + metadata
-    model_dir_path = BASE_RESOURCES_PATH / "savedExtendedIsolationForestModel" / f"{dataset_name}Model"
+    model_dir_path = (
+        BASE_RESOURCES_PATH / "savedExtendedIsolationForestModel" / f"{dataset_name}Model"
+    )
 
     avro_files = list(model_dir_path.glob("data/*.avro"))
     if not avro_files:
@@ -83,12 +104,13 @@ def _test_extended_converter_on_a_benchmark_dataset(
         converter.convert_and_save(temp_file_path)  # The checker is called here
         onx = onnx.load(temp_file_path)
     else:
-        # Just an in-memory convert; no checker. The final model that gets used is in convert_and_save.
+        # Just an in-memory convert; no checker.
+        # The final model that gets used is in convert_and_save.
         onx = converter.convert()
 
     # 4) Run inference in onnxruntime
     sess = InferenceSession(onx.SerializeToString())
-    predicted_outlier_scores = sess.run(None, input_dict)[0]
+    predicted_outlier_scores, _ = _run_batch_single_row(sess, input_dict["features"])
 
     # 5) Compare AUROC
     auroc = _roc_auc_score(actual_labels, predicted_outlier_scores)
@@ -105,7 +127,9 @@ def extended_converter():
 
     avro_files = list(model_dir_path.glob("data/*.avro"))
     if not avro_files:
-        raise FileNotFoundError("No Avro files found for 'shuttleModel' in extended converter tests.")
+        raise FileNotFoundError(
+            "No Avro files found for 'shuttleModel' in extended converter tests."
+        )
 
     model_file_path = avro_files[0]
     metadata_file_path = model_dir_path / "metadata" / "part-00000"
@@ -157,10 +181,10 @@ class TestExtendedIsolationForestConverter:
         onx_saved = onnx.load(temp_file_path)
 
         # Just load the final model in memory (the partial model won't pass checker).
-        in_mem_model = extended_converter.convert()
+        _ = extended_converter.convert()
 
         # We'll verify that loading the saved ONNX is valid and can be run:
-        sess = InferenceSession(onx_saved.SerializeToString())
+        _ = InferenceSession(onx_saved.SerializeToString())
         # If session creation works, we've confirmed the final model is good.
 
         # Optional: you can do a quick inference test:
