@@ -5,6 +5,6 @@ authors:
   given-names: "James"
   orcid: "https://orcid.org/0000-0002-5812-022X"
 title: "isolation-forest"
-version: 3.1.0
+version: 4.0.*
 date-released: 2019-08-13
 url: "https://github.com/linkedin/isolation-forest"
