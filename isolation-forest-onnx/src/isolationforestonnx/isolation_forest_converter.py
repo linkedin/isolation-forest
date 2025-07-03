@@ -226,7 +226,7 @@ class IsolationForestConverter:
             inputs=[
                 "expected_path_len",
                 "avg_path_len",
-            ],  # TODO: Can we get these from the nodeproto?
+            ],
             outputs=["normalized_path_len"],
             name="PathLenNormalizer",
             doc_string="This node normalizes the expected path length by "
