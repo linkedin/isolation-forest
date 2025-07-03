@@ -68,8 +68,8 @@ jobs:
         env:
           SCALA_VERSION: ${{ matrix.scala-version }}
           SPARK_VERSION: ${{ matrix.spark-version }}
-          SONATYPE_TOKEN_USER: ${{ secrets.SONATYPE_TOKEN_USER }}
-          SONATYPE_TOKEN_PWD: ${{ secrets.SONATYPE_TOKEN_PWD }}
+          SONATYPE_PORTAL_TOKEN_USER: ${{ secrets.SONATYPE_PORTAL_TOKEN_USER }}
+          SONATYPE_PORTAL_TOKEN_PWD: ${{ secrets.SONATYPE_PORTAL_TOKEN_PWD }}
           PGP_KEY: ${{ secrets.PGP_KEY }}
           PGP_PWD: ${{ secrets.PGP_PWD }}
 
