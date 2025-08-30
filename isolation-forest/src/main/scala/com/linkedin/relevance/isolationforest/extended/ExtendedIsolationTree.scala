@@ -146,7 +146,7 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
         // Build the hyperplane norm vector for the full space
         val splitVector = Array.fill(numFeatures)(0.0)
 
-        // Randomly choose which feature indices become non-zero
+        // Randomly choose which feature indices become non-zero (in the selected subspace)
         val chosenFeatureIndices = randomState.shuffle((0 until dim).toList).take(nNonZero)
         chosenFeatureIndices.foreach { i =>
           splitVector(featureIndices(i)) = randomState.nextGaussian()
@@ -164,23 +164,57 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
         // Normalize the vector
         val normSplitVector = splitVector.map(_ / normValue)
 
-        // Compute dot products in this subspace
-        val dotProducts = data.map(p => dot(normSplitVector, p))
-        val minDot = dotProducts.min
-        val maxDot = dotProducts.max
+        // Compute dot products in this subspace for a quick degeneracy check
+        var minDot = Double.PositiveInfinity
+        var maxDot = Double.NegativeInfinity
+        var idx = 0
+        while (idx < data.length) {
+          val d = dot(normSplitVector, data(idx))
+          if (d < minDot) minDot = d
+          if (d > maxDot) maxDot = d
+          idx += 1
+        }
 
         // If all dot-values are the same => leaf
         if (minDot == maxDot) {
           ExtendedExternalNode(numInstances)
         } else {
-          // pick offset uniformly in [minDot, maxDot]
-          val splitOffset = randomState.nextDouble() * (maxDot - minDot) + minDot
+          // -------- FIX: sample intercept as a point p from the per-coordinate ranges --------
+          // Only coordinates with non-zero weights in the hyperplane matter.
+          val nonZeroFeatureIdxs: Array[Int] = chosenFeatureIndices.map(featureIndices).toArray
+          val p = Array.fill(numFeatures)(0.0)
 
-          // Partition into left (dot < offset) and right (>= offset)
-          val (leftData, rightData) = data.partition { point =>
-            dot(normSplitVector, point) < splitOffset
+          var k = 0
+          while (k < nonZeroFeatureIdxs.length) {
+            val j = nonZeroFeatureIdxs(k)
+            var mn = Double.PositiveInfinity
+            var mx = Double.NegativeInfinity
+            var r = 0
+            while (r < data.length) {
+              val v = data(r).features(j).toDouble
+              if (v < mn) mn = v
+              if (v > mx) mx = v
+              r += 1
+            }
+            // If this coordinate is constant at this node, just use that constant.
+            p(j) = if (mn == mx) mn else mn + randomState.nextDouble() * (mx - mn)
+            k += 1
           }
-          // If one side is empty, we can just treat as leaf
+
+          // Offset = n · p
+          var splitOffset = 0.0
+          var t = 0
+          while (t < numFeatures) { splitOffset += normSplitVector(t) * p(t); t += 1 }
+          // -----------------------------------------------------------------------------------
+
+          // Partition into left (dot < offset) and right (>= offset).
+          // Paper's Algorithms 2 & 3 use (x - p) · n ≤ 0 for the left branch,
+          // which is equivalent to x·n ≤ p·n (= splitOffset).
+          val (leftData, rightData) = data.partition { point =>
+            dot(normSplitVector, point) <= splitOffset
+          }
+
+          // If one side is empty, treat as leaf
           if (leftData.isEmpty || rightData.isEmpty) {
             ExtendedExternalNode(numInstances)
           } else {
@@ -260,7 +294,8 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
           currentPathLength + Utils.avgPathLength(numInstances)
         case ExtendedInternalNode(left, right, splitHyperplane) =>
           val dpVal = dot(splitHyperplane.norm, dataInstance)
-          if (dpVal < splitHyperplane.offset) {
+          // Match Algorithm 3’s test: (x - p) · n ≤ 0 ⇒ x·n ≤ p·n (= offset) goes left.
+          if (dpVal <= splitHyperplane.offset) {
             pathLengthInternal(dataInstance, left, currentPathLength + 1)
           } else {
             pathLengthInternal(dataInstance, right, currentPathLength + 1)
@@ -271,11 +306,11 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
   }
 
   /**
-   * Compute the dot product between the subspace `splitVector` and the data point's selected
-   * features.
+   * Compute x · n where `splitVector` is the *full-length* normal (zeros in coordinates not used by
+   * this node), matching the paper's test (x - p) · n ≤ 0.
    *
    * @param splitVector
-   *   array of length == featureIndices.length
+   *   array of length == point.features.length
    * @param point
    *   data point (float[] features)
    * @return
