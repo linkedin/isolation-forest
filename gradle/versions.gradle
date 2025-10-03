@@ -1,13 +1,10 @@
-import org.gradle.util.VersionNumber
-
 ext {
-    scalaVersion = findProperty("scalaVersion") ?: "2.13.14"
+    scalaVersion = findProperty("scalaVersion") ?: "2.13.17"
     println "Scala version: " + scalaVersion
 
     // Get the short Scala version: if scalaVersion == "X.Y.Z", then scalaVersionShort == "X.Y"
-    scalaVersionShort = VersionNumber.parse(scalaVersion).getMajor() + "." +
-            VersionNumber.parse(scalaVersion).getMinor()
+    scalaVersionShort = scalaVersion.substring(0, scalaVersion.lastIndexOf('.'))
 
-    sparkVersion = findProperty("sparkVersion") ?: "3.5.5"
+    sparkVersion = findProperty("sparkVersion") ?: "4.0.1"
     println "Spark version: " + sparkVersion
 }

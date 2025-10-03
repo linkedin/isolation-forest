@@ -16,11 +16,20 @@ dependencies {
 }
 
 test {
+    jvmArgs += [
+            '--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
+            '--add-opens=java.base/java.lang=ALL-UNNAMED',
+            '--add-opens=java.base/java.nio=ALL-UNNAMED',
+            '--add-opens=java.base/java.util=ALL-UNNAMED',
+            '--add-opens=java.base/sun.nio.ch=ALL-UNNAMED'
+    ]
+
     useTestNG()
     environment 'SPARK_VERSION', sparkVersion
     environment 'SCALA_VERSION_SHORT', scalaVersionShort
 }
 
-archivesBaseName = "${project.name}_${sparkVersion}_${scalaVersionShort}"
-
+base {
+    archivesName = "${project.name}_${sparkVersion}_${scalaVersionShort}"
+}
 apply from: "$rootDir/gradle/java-publication.gradle"
