@@ -57,6 +57,9 @@ jobs:
           - scala-version: 2.13.14
             spark-version: 4.0.1
             java-version: '17'
+          - scala-version: 2.13.14
+            spark-version: 4.1.1
+            java-version: '17'
     if: "! contains(toJSON(github.event.commits.*.message), '[skip ci]')"
     steps:
       - name: Check out code
