@@ -8,5 +8,5 @@ pandas==2.2.3
 wheel==0.46.2
 flake8==7.1.1
 mypy==1.11
-setuptools==74.0.0
+setuptools==78.1.1
 twine==5.1.1
