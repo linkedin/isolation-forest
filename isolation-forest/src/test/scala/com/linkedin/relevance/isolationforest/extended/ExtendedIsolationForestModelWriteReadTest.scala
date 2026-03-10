@@ -11,6 +11,11 @@ import com.linkedin.relevance.isolationforest.extended.{
   ExtendedIsolationForestModel,
   ExtendedIsolationTree,
 }
+import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
+  ExtendedExternalNode,
+  ExtendedInternalNode,
+  ExtendedNode,
+}
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.feature.VectorAssembler
@@ -28,6 +33,27 @@ import java.io.File
  * forest
  */
 class ExtendedIsolationForestModelWriteReadTest extends Logging {
+
+  private def assertTreesEqual(a: ExtendedNode, b: ExtendedNode, eps: Double = 1e-12): Unit =
+    (a, b) match {
+      case (ExtendedExternalNode(n1), ExtendedExternalNode(n2)) =>
+        Assert.assertEquals(n1, n2, "numInstances mismatch")
+      case (ExtendedInternalNode(l1, r1, h1), ExtendedInternalNode(l2, r2, h2)) =>
+        Assert.assertEquals(h1.norm.length, h2.norm.length, "norm length mismatch")
+        h1.norm.zip(h2.norm).foreach { case (v1, v2) =>
+          Assert.assertTrue(math.abs(v1 - v2) < eps, s"norm mismatch: $v1 vs $v2")
+        }
+        Assert.assertTrue(
+          math.abs(h1.offset - h2.offset) < eps,
+          s"offset mismatch: ${h1.offset} vs ${h2.offset}",
+        )
+        assertTreesEqual(l1, l2, eps)
+        assertTreesEqual(r1, r2, eps)
+      case _ =>
+        Assert.fail(
+          s"Node type mismatch: ${a.getClass.getSimpleName} vs ${b.getClass.getSimpleName}",
+        )
+    }
 
   @Test(description = "extendedIsolationForestModelWriteReadTest")
   def extendedIsolationForestModelWriteReadTest(): Unit = {
@@ -90,7 +116,7 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     extendedIFModel1.extendedIsolationTrees
       .zip(extendedIFModel2.extendedIsolationTrees)
       .foreach { case (tree1: ExtendedIsolationTree, tree2: ExtendedIsolationTree) =>
-        Assert.assertEquals(tree2.extendedNode.toString, tree1.extendedNode.toString)
+        assertTreesEqual(tree1.extendedNode, tree2.extendedNode)
       }
 
     spark.stop()
@@ -159,7 +185,7 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     extendedIFModel1.extendedIsolationTrees
       .zip(extendedIFModel2.extendedIsolationTrees)
       .foreach { case (tree1: ExtendedIsolationTree, tree2: ExtendedIsolationTree) =>
-        Assert.assertEquals(tree2.extendedNode.toString, tree1.extendedNode.toString)
+        assertTreesEqual(tree1.extendedNode, tree2.extendedNode)
       }
 
     spark.stop()
