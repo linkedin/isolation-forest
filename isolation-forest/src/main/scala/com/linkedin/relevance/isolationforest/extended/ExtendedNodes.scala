@@ -30,8 +30,8 @@ private[isolationforest] case object ExtendedNodes {
       with ExternalNodeBase {
 
     require(
-      numInstances > 0,
-      s"parameter numInstances must be > 0, but given invalid value $numInstances",
+      numInstances >= 0,
+      s"parameter numInstances must be >= 0, but given invalid value $numInstances",
     )
 
     override def toString: String = s"ExtendedExternalNode(numInstances = $numInstances)"
