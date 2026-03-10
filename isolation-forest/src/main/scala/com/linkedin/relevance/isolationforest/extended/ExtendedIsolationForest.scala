@@ -66,7 +66,6 @@ class ExtendedIsolationForest(override val uid: String)
     } else {
       maxExtensionLevel
     }
-    set(extensionLevel, resolvedExtensionLevel)
     logInfo(s"Using extensionLevel=$resolvedExtensionLevel (max=$maxExtensionLevel)")
 
     // Bag and flatten the data, then repartition it so that each partition corresponds to one
