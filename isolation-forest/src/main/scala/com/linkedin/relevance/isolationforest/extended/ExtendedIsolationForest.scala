@@ -52,6 +52,23 @@ class ExtendedIsolationForest(override val uid: String)
     // actually used to train the model: numFeatures and numSamples
     val resolvedParams = validateAndResolveParams(dataset)
 
+    // Resolve the effective extension level: default to fully extended if not explicitly set,
+    // otherwise validate the user-specified value against the resolved feature subspace dimension.
+    val maxExtensionLevel = resolvedParams.numFeatures - 1
+    val resolvedExtensionLevel = if (isSet(extensionLevel)) {
+      require(
+        $(extensionLevel) <= maxExtensionLevel,
+        s"parameter extensionLevel given invalid value ${$(extensionLevel)}," +
+          s" but must be in [0, $maxExtensionLevel] for a subspace of" +
+          s" ${resolvedParams.numFeatures} features.",
+      )
+      $(extensionLevel)
+    } else {
+      maxExtensionLevel
+    }
+    set(extensionLevel, resolvedExtensionLevel)
+    logInfo(s"Using extensionLevel=$resolvedExtensionLevel (max=$maxExtensionLevel)")
+
     // Bag and flatten the data, then repartition it so that each partition corresponds to one
     // isolation tree.
     val repartitionedFlattenedSampledDataset = createSampledPartitionedDataset(
@@ -70,8 +87,7 @@ class ExtendedIsolationForest(override val uid: String)
       resolvedParams.numFeatures,
       $(randomSeed) + 2 * (dataset.rdd.getNumPartitions + 1),
       (dataArray: Array[DataPoint], seed: Long, featureIndices: Array[Int]) =>
-        // We'll define an inline function that calls ExtendedIsolationTree.fit with extensionLevel
-        ExtendedIsolationTree.fit(dataArray, seed, featureIndices, $(extensionLevel)),
+        ExtendedIsolationTree.fit(dataArray, seed, featureIndices, resolvedExtensionLevel),
     )
 
     // Create the ExtendedIsolationForestModel instance and set the parent.
