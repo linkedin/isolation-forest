@@ -39,6 +39,13 @@ private[isolationforest] class ExtendedIsolationTree(val extendedNode: ExtendedN
 private[isolationforest] object ExtendedIsolationTree extends Logging {
 
   /**
+   * Maximum number of attempts to find a valid hyperplane split before giving up and emitting a
+   * leaf. This prevents premature leafing when a random draw is degenerate (e.g. a constant feature
+   * is chosen at extensionLevel=0), while still bounding computation.
+   */
+  val MaxSplitRetries: Int = 50
+
+  /**
    * Trains a single extended isolation tree using random hyperplane splits.
    *
    * @param data
@@ -143,105 +150,110 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
         // We allow up to (extensionLevel+1) coordinates to be non-zero
         val nNonZero = math.min(extensionLevel + 1, dim)
 
-        // Build the hyperplane norm vector for the full space
-        val splitVector = Array.fill(numFeatures)(0.0)
+        // Retry hyperplane generation up to MaxSplitRetries times to avoid premature
+        // leafing when the first random draw happens to be degenerate (e.g. the chosen
+        // axis-aligned feature is constant, or the intercept lands outside the data range).
+        // This is important for correctness: without retries, extensionLevel=0 is not
+        // equivalent to standard IF when a constant feature is chosen on the first try.
+        var attempt = 0
+        while (attempt < MaxSplitRetries) {
+          attempt += 1
 
-        // Randomly choose which feature indices become non-zero (in the selected subspace)
-        val chosenFeatureIndices = randomState.shuffle((0 until dim).toList).take(nNonZero)
-        chosenFeatureIndices.foreach { i =>
-          splitVector(featureIndices(i)) = randomState.nextGaussian()
-        }
+          // Build the hyperplane norm vector for the full space
+          val splitVector = Array.fill(numFeatures)(0.0)
 
-        // Compute the L2 norm of the vector
-        val squaredSum = splitVector.map(x => x * x).sum
-        val normValue = math.sqrt(squaredSum)
+          // Randomly choose which feature indices become non-zero (in the selected subspace)
+          val chosenFeatureIndices = randomState.shuffle((0 until dim).toList).take(nNonZero)
+          chosenFeatureIndices.foreach { i =>
+            splitVector(featureIndices(i)) = randomState.nextGaussian()
+          }
 
-        // Check to ensure the norm is non-zero to avoid division by zero
-        if (normValue == 0) {
-          throw new IllegalArgumentException("Cannot normalize a zero vector.")
-        }
+          // Compute the L2 norm of the vector
+          val squaredSum = splitVector.map(x => x * x).sum
+          val normValue = math.sqrt(squaredSum)
 
-        // Normalize the vector
-        val normSplitVector = splitVector.map(_ / normValue)
+          // Zero-norm vector (astronomically unlikely with Gaussian draws) — retry
+          if (normValue > 0) {
+            // Normalize the vector
+            val normSplitVector = splitVector.map(_ / normValue)
 
-        // Compute dot products in this subspace for a quick degeneracy check
-        var minDot = Double.PositiveInfinity
-        var maxDot = Double.NegativeInfinity
-        var idx = 0
-        while (idx < data.length) {
-          val d = dot(normSplitVector, data(idx))
-          if (d < minDot) minDot = d
-          if (d > maxDot) maxDot = d
-          idx += 1
-        }
-
-        // If all dot-values are the same => leaf
-        if (minDot == maxDot) {
-          ExtendedExternalNode(numInstances)
-        } else {
-          // -------- FIX: sample intercept as a point p from the per-coordinate ranges --------
-          // Only coordinates with non-zero weights in the hyperplane matter.
-          val nonZeroFeatureIdxs: Array[Int] = chosenFeatureIndices.map(featureIndices).toArray
-          val p = Array.fill(numFeatures)(0.0)
-
-          var k = 0
-          while (k < nonZeroFeatureIdxs.length) {
-            val j = nonZeroFeatureIdxs(k)
-            var mn = Double.PositiveInfinity
-            var mx = Double.NegativeInfinity
-            var r = 0
-            while (r < data.length) {
-              val v = data(r).features(j).toDouble
-              if (v < mn) mn = v
-              if (v > mx) mx = v
-              r += 1
+            // Compute dot products for a quick degeneracy check
+            var minDot = Double.PositiveInfinity
+            var maxDot = Double.NegativeInfinity
+            var idx = 0
+            while (idx < data.length) {
+              val d = dot(normSplitVector, data(idx))
+              if (d < minDot) minDot = d
+              if (d > maxDot) maxDot = d
+              idx += 1
             }
-            // If this coordinate is constant at this node, just use that constant.
-            p(j) = if (mn == mx) mn else mn + randomState.nextDouble() * (mx - mn)
-            k += 1
-          }
 
-          // Offset = n · p
-          var splitOffset = 0.0
-          var t = 0
-          while (t < numFeatures) { splitOffset += normSplitVector(t) * p(t); t += 1 }
-          // -----------------------------------------------------------------------------------
+            // All dot-values identical means this hyperplane can't split the data — retry
+            if (minDot != maxDot) {
+              // Sample intercept point p from the per-coordinate ranges.
+              // Only coordinates with non-zero weights in the hyperplane matter.
+              val nonZeroFeatureIdxs: Array[Int] = chosenFeatureIndices.map(featureIndices).toArray
+              val p = Array.fill(numFeatures)(0.0)
 
-          // Partition into left (dot < offset) and right (>= offset).
-          // Paper's Algorithms 2 & 3 use (x - p) · n ≤ 0 for the left branch,
-          // which is equivalent to x·n ≤ p·n (= splitOffset).
-          val (leftData, rightData) = data.partition { point =>
-            dot(normSplitVector, point) <= splitOffset
-          }
+              var k = 0
+              while (k < nonZeroFeatureIdxs.length) {
+                val j = nonZeroFeatureIdxs(k)
+                var mn = Double.PositiveInfinity
+                var mx = Double.NegativeInfinity
+                var r = 0
+                while (r < data.length) {
+                  val v = data(r).features(j).toDouble
+                  if (v < mn) mn = v
+                  if (v > mx) mx = v
+                  r += 1
+                }
+                // If this coordinate is constant at this node, just use that constant.
+                p(j) = if (mn == mx) mn else mn + randomState.nextDouble() * (mx - mn)
+                k += 1
+              }
 
-          // If one side is empty, treat as leaf
-          if (leftData.isEmpty || rightData.isEmpty) {
-            ExtendedExternalNode(numInstances)
-          } else {
-            // Build children
-            val leftChild = generateExtendedIsolationTreeInternal(
-              leftData,
-              currentTreeHeight + 1,
-              heightLimit,
-              randomState,
-              featureIndices,
-              extensionLevel,
-            )
-            val rightChild = generateExtendedIsolationTreeInternal(
-              rightData,
-              currentTreeHeight + 1,
-              heightLimit,
-              randomState,
-              featureIndices,
-              extensionLevel,
-            )
-            ExtendedInternalNode(
-              leftChild,
-              rightChild,
-              SplitHyperplane(normSplitVector, splitOffset),
-            )
+              // Offset = n · p
+              var splitOffset = 0.0
+              var t = 0
+              while (t < numFeatures) { splitOffset += normSplitVector(t) * p(t); t += 1 }
+
+              // Partition: paper's Algorithms 2 & 3 use (x - p) · n ≤ 0 for the left branch,
+              // which is equivalent to x·n ≤ p·n (= splitOffset).
+              val (leftData, rightData) = data.partition { point =>
+                dot(normSplitVector, point) <= splitOffset
+              }
+
+              // One side empty means this split is degenerate — retry
+              if (leftData.nonEmpty && rightData.nonEmpty) {
+                // Valid split found — build children and return
+                val leftChild = generateExtendedIsolationTreeInternal(
+                  leftData,
+                  currentTreeHeight + 1,
+                  heightLimit,
+                  randomState,
+                  featureIndices,
+                  extensionLevel,
+                )
+                val rightChild = generateExtendedIsolationTreeInternal(
+                  rightData,
+                  currentTreeHeight + 1,
+                  heightLimit,
+                  randomState,
+                  featureIndices,
+                  extensionLevel,
+                )
+                return ExtendedInternalNode(
+                  leftChild,
+                  rightChild,
+                  SplitHyperplane(normSplitVector, splitOffset),
+                )
+              }
+            }
           }
         }
+
+        // All retry attempts exhausted — emit a leaf
+        ExtendedExternalNode(numInstances)
       }
     }
 
