@@ -319,7 +319,6 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
       val numSamples = (metadata.metadata \ "numSamples").extract[Int]
       val numFeatures = (metadata.metadata \ "numFeatures").extract[Int]
       val threshold = (metadata.metadata \ "outlierScoreThreshold").extract[Double]
-      //    val extensionLevel = (metadata.metadata \ "extensionLevel").extractOpt[Int]
 
       // 3) Load & rebuild each extended tree, returning an array of ExtendedNode
       val rootNodes = loadTrees(path, sparkSession, buildExtendedNode)
