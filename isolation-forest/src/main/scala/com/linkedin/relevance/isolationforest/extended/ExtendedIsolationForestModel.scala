@@ -88,7 +88,7 @@ class ExtendedIsolationForestModel(
     val calculatePathLength = (features: Vector) => {
       val pathLength = broadcastExtendedIsolationTrees.value
         .map(y => y.calculatePathLength(DataPoint(features.toArray.map(x => x.toFloat))))
-        .sum / $(numEstimators)
+        .sum / broadcastExtendedIsolationTrees.value.length
       Math.pow(2, -pathLength / avgPath)
     }
     val transformUDF = udf(calculatePathLength)
