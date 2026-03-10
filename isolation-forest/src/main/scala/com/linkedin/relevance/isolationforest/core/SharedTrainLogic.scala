@@ -219,6 +219,11 @@ private[isolationforest] object SharedTrainLogic extends Logging {
 
         // Shuffle, then slice to limit the data
         val dataForTree = rnd.shuffle(x.toSeq).slice(0, numSamples).toArray
+        if (dataForTree.isEmpty)
+          throw new IllegalStateException(
+            s"Partition $partitionId received zero samples for tree training." +
+              s" This can happen with very small maxSamples values. Try increasing maxSamples.",
+          )
         if (dataForTree.length != numSamples)
           logWarning(
             s"Isolation tree with random seed ${seed} is trained using " +
