@@ -1,10 +1,9 @@
 package com.linkedin.relevance.isolationforest.extended
 
-import com.linkedin.relevance.isolationforest.{IsolationForestModel, IsolationForestModelReadWrite}
 import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, avgPathLength}
 import org.apache.spark.ml.Model
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
-import org.apache.spark.ml.linalg.{SQLDataTypes, Vector}
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.{MLReadable, MLReader, MLWritable, MLWriter}
 import org.apache.spark.sql.functions.{col, lit, udf}

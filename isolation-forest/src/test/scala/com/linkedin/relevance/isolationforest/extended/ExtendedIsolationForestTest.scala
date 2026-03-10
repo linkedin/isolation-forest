@@ -54,7 +54,7 @@ class ExtendedIsolationForestTest {
     spark.stop()
   }
 
-  @Test(description = "extendedIsolationForestMammographyDataTest")
+  @Test(description = "extendedIsolationForestMammographyZeroExtensionDataTest")
   def extendedIsolationForestMammographyZeroExtensionDataTest(): Unit = {
 
     val spark = getSparkSession
@@ -98,7 +98,7 @@ class ExtendedIsolationForestTest {
     spark.stop()
   }
 
-  @Test(description = "extnededIsolationForestMammographyExactContaminationDataTest")
+  @Test(description = "extendedIsolationForestMammographyExactContaminationDataTest")
   def extendedIsolationForestMammographyExactContaminationDataTest(): Unit = {
 
     val spark = getSparkSession
