@@ -25,6 +25,7 @@
 - [Performance and benchmarks](#performance-and-benchmarks)
 - [Copyright and license](#copyright-and-license)
 - [Contributing](#contributing)
+- [Citing this project](#citing-this-project)
 - [References](#references)
 
 ## Introduction
@@ -418,6 +419,21 @@ See [License](LICENSE) in the project root for license information.
 ## Contributing
 
 If you would like to contribute to this project, please review the instructions [here](CONTRIBUTING.md). 
+
+## Citing this project
+
+If you use this library in your research or project, please cite it using the metadata in
+[CITATION.cff](CITATION.cff), or use the following BibTeX entry:
+
+```bibtex
+@software{isolation_forest,
+  author = {Verbus, James},
+  title = {isolation-forest},
+  year = {2019},
+  url = {https://github.com/linkedin/isolation-forest},
+  license = {BSD-2-Clause}
+}
+```
 
 ## References
 
