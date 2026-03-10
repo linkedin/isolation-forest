@@ -387,24 +387,22 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     spark.stop()
   }
 
-//  @Test(description = "savedExtendedIsolationForestModelTreeStructureTest")
-//  def savedExtendedIsolationForestModelTreeStructureTest(): Unit = {
-//
-//    val spark = getSparkSession
-//
-//    // Suppose you have a saved extended model in resources:
-//    val modelPath = "src/test/resources/savedExtendedIsolationForestModel"
-//    val extendedIFModel = ExtendedIsolationForestModel.load(modelPath)
-//    val observedTreeStructure = extendedIFModel.extendedIsolationTrees.head.extendedNode.toString
-//
-//    // We'll read an expected structure from file (like your original test).
-//    val expectedTreeStructurePath = "src/test/resources/expectedExtendedTreeStructure.txt"
-//    val bufferedSource = scala.io.Source.fromFile(expectedTreeStructurePath)
-//    val expectedTreeStructure = bufferedSource.mkString
-//    bufferedSource.close()
-//
-//    Assert.assertEquals(observedTreeStructure, expectedTreeStructure)
-//
-//    spark.stop()
-//  }
+  @Test(description = "savedExtendedIsolationForestModelTreeStructureTest")
+  def savedExtendedIsolationForestModelTreeStructureTest(): Unit = {
+
+    val spark = getSparkSession
+
+    val modelPath = "src/test/resources/savedExtendedIsolationForestModel"
+    val extendedIFModel = ExtendedIsolationForestModel.load(modelPath)
+    val observedTreeStructure = extendedIFModel.extendedIsolationTrees.head.extendedNode.toString
+
+    val expectedTreeStructurePath = "src/test/resources/expectedExtendedTreeStructure.txt"
+    val bufferedSource = scala.io.Source.fromFile(expectedTreeStructurePath)
+    val expectedTreeStructure = bufferedSource.mkString
+    bufferedSource.close()
+
+    Assert.assertEquals(observedTreeStructure, expectedTreeStructure)
+
+    spark.stop()
+  }
 }
