@@ -286,6 +286,52 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     spark.stop()
   }
 
+  @Test(description = "extendedIsolationForestDefaultExtensionLevelWriteReadTest")
+  def extendedIsolationForestDefaultExtensionLevelWriteReadTest(): Unit = {
+
+    val spark = getSparkSession
+    import spark.implicits._
+
+    val data = loadMammographyData(spark)
+
+    // Train without explicitly setting extensionLevel — should default to numFeatures - 1
+    val extendedIF = new ExtendedIsolationForest()
+      .setNumEstimators(10)
+      .setBootstrap(false)
+      .setMaxSamples(256)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.0)
+      .setRandomSeed(1)
+
+    val extendedIFModel1 = extendedIF.fit(data)
+
+    // The resolved extensionLevel should equal numFeatures - 1 (mammography has 6 features)
+    val expectedExtensionLevel = extendedIFModel1.getNumFeatures - 1
+    Assert.assertEquals(
+      extendedIFModel1.getExtensionLevel,
+      expectedExtensionLevel,
+      "extensionLevel should default to numFeatures - 1 when not explicitly set",
+    )
+
+    // Save/load and verify the resolved extensionLevel persists
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/savedExtendedIFModelDefaultExtLevel"
+    extendedIFModel1.write.overwrite().save(savePath)
+    val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
+    deleteDirectory(new File(savePath))
+
+    Assert.assertEquals(
+      extendedIFModel2.getExtensionLevel,
+      expectedExtensionLevel,
+      "extensionLevel should persist through save/load",
+    )
+
+    spark.stop()
+  }
+
 //  @Test(description = "savedExtendedIsolationForestModelTreeStructureTest")
 //  def savedExtendedIsolationForestModelTreeStructureTest(): Unit = {
 //
