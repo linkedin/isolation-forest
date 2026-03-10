@@ -15,6 +15,10 @@
   - [Model parameters](#model-parameters)
   - [Training and scoring](#training-and-scoring)
   - [Saving and loading a trained model](#saving-and-loading-a-trained-model)
+- [Extended Isolation Forest](#extended-isolation-forest)
+  - [When to use Extended Isolation Forest](#when-to-use-extended-isolation-forest)
+  - [Extended Isolation Forest parameters](#extended-isolation-forest-parameters)
+  - [Extended Isolation Forest usage example](#extended-isolation-forest-usage-example)
 - [ONNX conversion for portable inference](#onnx-conversion-for-portable-inference)
   - [Converting a trained model to ONNX](#converting-a-trained-model-to-onnx)
   - [Using the ONNX model for inference (example in Python)](#using-the-onnx-model-for-inference-example-in-python)
@@ -26,17 +30,26 @@
 ## Introduction
 
 This is a distributed Scala/Spark implementation of the Isolation Forest unsupervised outlier detection
-algorithm. It features support for ONNX export for easy cross-platform inference. This library was created
-by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the LinkedIn Anti-Abuse AI team.
+algorithm. It includes both the standard Isolation Forest and the [Extended Isolation Forest](https://arxiv.org/abs/1811.02141),
+which uses random hyperplane splits to eliminate the axis-aligned bias of the original algorithm. The standard
+Isolation Forest also features support for ONNX export for easy cross-platform inference. This library was
+created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the LinkedIn Anti-Abuse AI team.
 
 ## Features
 
 * **Distributed training and scoring:** The `isolation-forest` module supports distributed training and scoring in Scala
   using Spark data structures. It inherits from the `Estimator` and `Model` classes in [Spark's ML library](https://spark.apache.org/mllib/) in
   order to take advantage of machinery such as `Pipeline`s. Model persistence on HDFS is supported.
-* **Broad portability via ONNX:** The `isolation-forest-onnx` module provides Python-based converter to convert a
-  trained model to ONNX format for broad portability across platforms and languages. [ONNX](https://onnx.ai/) is an open format built
-  to represent machine learning models.
+* **Extended Isolation Forest:** The `ExtendedIsolationForest` variant uses random hyperplane splits instead of
+  axis-aligned splits, eliminating the directional bias present in the standard algorithm. This is especially
+  useful for detecting anomalies in data with correlated features or along non-axis-aligned manifolds.
+  See [Hariri et al., 2018](https://arxiv.org/abs/1811.02141).
+* **Broad portability via ONNX:** The `isolation-forest-onnx` module provides a Python-based converter to convert a
+  trained standard `IsolationForestModel` to ONNX format for broad portability across platforms and languages.
+  [ONNX](https://onnx.ai/) is an open format built to represent machine learning models.
+  **Note:** ONNX export is currently supported for the standard `IsolationForest` only. The `ExtendedIsolationForest`
+  uses hyperplane splits that are not compatible with the axis-aligned tree ensemble representation used by the
+  ONNX converter.
 
 ## Getting started
 
@@ -221,7 +234,80 @@ isolationForestModel.write.overwrite.save(path)
 val isolationForestModel2 = IsolationForestModel.load(path)
 ```
 
+## Extended Isolation Forest
+
+The Extended Isolation Forest (EIF) generalizes the standard Isolation Forest by replacing axis-aligned
+splits with random hyperplane splits. This eliminates the bias that standard Isolation Forest has toward
+detecting anomalies along individual feature axes, making it more effective for data with correlated
+features or anomalies that lie along non-axis-aligned directions. For full details, see
+[Hariri et al., "Extended Isolation Forest," 2018](https://arxiv.org/abs/1811.02141).
+
+### When to use Extended Isolation Forest
+
+Use `ExtendedIsolationForest` instead of `IsolationForest` when:
+
+* Your data has correlated features where anomalies may not be separable along any single axis.
+* You observe "ghost" high-score regions along feature axes in standard IF that don't correspond to
+  real anomalies (a known artifact of axis-aligned splits).
+* You want a more rotationally invariant anomaly detector.
+
+The standard `IsolationForest` remains a good default for high-dimensional, uncorrelated data where
+axis-aligned splits are sufficient and computational cost matters.
+
+### Extended Isolation Forest parameters
+
+`ExtendedIsolationForest` accepts all the same parameters as `IsolationForest` (see the
+[model parameters table](#model-parameters) above), plus one additional parameter:
+
+| Parameter      | Default Value       | Description                                                                                                                                                                                          |
+|----------------|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| extensionLevel | numFeatures - 1     | Controls the number of non-zero coordinates in each random hyperplane normal vector. `extensionLevel + 1` coordinates are non-zero. `0` recovers standard axis-aligned splits. The maximum value is `numFeatures - 1` (fully extended), which is the default if not set. |
+
+**Important: interaction with `maxFeatures`.** When `maxFeatures < 1.0`, each tree trains on a random
+subset of features. The `extensionLevel` is relative to this subspace, not the original dataset
+dimensionality. For example, if your data has 10 features and `maxFeatures = 0.5`, each tree uses 5
+features, and the valid range for `extensionLevel` is `[0, 4]`. If not set, `extensionLevel` defaults
+to `numFeatures - 1` for the resolved subspace. If you explicitly set `extensionLevel` to a value
+greater than `numFeatures - 1`, training will throw an error.
+
+### Extended Isolation Forest usage example
+
+```scala
+import com.linkedin.relevance.isolationforest.extended._
+
+val contamination = 0.02
+val extendedIsolationForest = new ExtendedIsolationForest()
+  .setNumEstimators(100)
+  .setBootstrap(false)
+  .setMaxSamples(256)
+  .setMaxFeatures(1.0)
+  .setFeaturesCol("features")
+  .setPredictionCol("predictedLabel")
+  .setScoreCol("outlierScore")
+  .setContamination(contamination)
+  .setContaminationError(0.01 * contamination)
+  .setExtensionLevel(5)  // Use 6 non-zero coordinates per hyperplane
+  .setRandomSeed(1)
+
+val extendedIsolationForestModel = extendedIsolationForest.fit(data)
+val dataWithScores = extendedIsolationForestModel.transform(data)
+```
+
+Saving and loading works the same way as the standard model:
+
+```scala
+// Save
+extendedIsolationForestModel.write.overwrite.save(path)
+
+// Load
+val loadedModel = ExtendedIsolationForestModel.load(path)
+```
+
 ## ONNX conversion for portable inference
+
+> **Note:** ONNX conversion is supported for the standard `IsolationForestModel` only. The
+> `ExtendedIsolationForestModel` uses hyperplane-based splits that are not compatible with the
+> axis-aligned tree ensemble representation used by the current ONNX converter.
 
 ### Converting a trained model to ONNX
 
@@ -337,4 +423,5 @@ If you would like to contribute to this project, please review the instructions 
 
 * F. T. Liu, K. M. Ting, and Z.-H. Zhou, “Isolation forest,” in 2008 Eighth IEEE International Conference on Data Mining, 2008, pp. 413–422.
 * F. T. Liu, K. M. Ting, and Z.-H. Zhou, “Isolation-based anomaly detection,” ACM Transactions on Knowledge Discovery from Data (TKDD), vol. 6, no. 1, p. 3, 2012.
+* S. Hariri, M. Carrasco Kind, and R. J. Brunner, “Extended Isolation Forest,” IEEE Transactions on Knowledge and Data Engineering, 2019. [arXiv:1811.02141](https://arxiv.org/abs/1811.02141).
 * Shebuti Rayana (2016).  ODDS Library [http://odds.cs.stonybrook.edu]. Stony Brook, NY: Stony Brook University, Department of Computer Science.
