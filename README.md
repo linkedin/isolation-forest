@@ -262,7 +262,7 @@ axis-aligned splits are sufficient and computational cost matters.
 
 | Parameter      | Default Value       | Description                                                                                                                                                                                          |
 |----------------|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| extensionLevel | numFeatures - 1     | Controls the number of non-zero coordinates in each random hyperplane normal vector. `extensionLevel + 1` coordinates are non-zero. `0` recovers standard axis-aligned splits. The maximum value is `numFeatures - 1` (fully extended), which is the default if not set. |
+| extensionLevel | numFeatures - 1     | Controls the number of non-zero coordinates in each random hyperplane normal vector. `extensionLevel + 1` coordinates are non-zero. `0` uses axis-aligned splits. The maximum value is `numFeatures - 1` (fully extended), which is the default if not set. |
 
 **Important: interaction with `maxFeatures`.** When `maxFeatures < 1.0`, each tree trains on a random
 subset of features. The `extensionLevel` is relative to this subspace, not the original dataset
@@ -436,19 +436,20 @@ extension level, not standard IF.
 **Key observations:**
 
 * **StandardIF** results are in excellent agreement with the original Liu et al. paper.
-* **ExtendedIF_max matches the reference Python EIF implementation** across all 13 datasets
-  (all within ~2&sigma;), validating the implementation.
+* **ExtendedIF_max closely matches the reference Python EIF implementation** across all 13
+  datasets (all within ~2&sigma;), validating the implementation.
 * **EIF shines on higher-dimensional data:** ionosphere (AUROC 0.907 vs 0.844 for standard IF),
   satellite (0.725 vs 0.717), cardio (0.933 vs 0.928), and arrhythmia (0.810 vs 0.806).
-* **EIF underperforms on low-dimensional data** (cover 10D, http 3D, smtp 3D, mulcross 4D),
-  consistent with findings in the Hariri et al. paper.
+* **EIF underperforms on low-dimensional data in our benchmarks** (cover 10D, http 3D, smtp 3D,
+  mulcross 4D). This is consistent with expectations: fewer dimensions give hyperplane splits
+  less room to outperform axis-aligned ones.
 * **ExtendedIF_0 is not equivalent to StandardIF.** Although both use axis-aligned splits, they
   are different algorithms: standard IF retries when it picks a constant feature, while EIF
   commits to its random draw (matching the reference implementation and both the Python and C++
   codebases). Standard IF also has a different RNG consumption pattern per node. These differences
   are most visible on low-dimensional data where fewer features are available to retry with and
-  tree depth is most constrained. Our ExtendedIF_0 results match the reference Python EIF,
-  confirming this is an inherent algorithmic difference, not a bug.
+  tree depth is most constrained. Our ExtendedIF_0 results closely match the reference Python EIF
+  on 12 of 13 datasets; one outlier (mulcross) remains under investigation.
 
 ## Copyright and license
 
