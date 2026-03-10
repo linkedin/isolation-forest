@@ -10,6 +10,7 @@ import com.linkedin.relevance.isolationforest.extended.{
   ExtendedIsolationForest,
   ExtendedIsolationForestModel,
   ExtendedIsolationTree,
+  ExtendedUtils,
 }
 import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
   ExtendedExternalNode,
@@ -282,6 +283,60 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
 
     // Assert that the loaded model has 0 extended trees
     Assert.assertEquals(extendedIFModel2.extendedIsolationTrees.length, 0)
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestZeroSizeLeafWriteReadTest")
+  def extendedIsolationForestZeroSizeLeafWriteReadTest(): Unit = {
+
+    val spark = getSparkSession
+
+    // Build a hand-crafted tree containing ExtendedExternalNode(0) to simulate a degenerate
+    // hyperplane split where all points went to one side.
+    val zeroLeaf = ExtendedExternalNode(0)
+    val normalLeaf = ExtendedExternalNode(5)
+    val splitHyperplane =
+      ExtendedUtils.SplitHyperplane(Array(0.7071067812, 0.7071067812), 1.5)
+    val root = ExtendedInternalNode(zeroLeaf, normalLeaf, splitHyperplane)
+    val tree = new ExtendedIsolationTree(root)
+
+    val extendedIFModel1 =
+      new ExtendedIsolationForestModel(
+        "testUidZeroLeaf",
+        Array(tree),
+        numSamples = 5,
+        numFeatures = 2,
+      )
+    extendedIFModel1.setOutlierScoreThreshold(0.5)
+
+    // Write and read back
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/savedExtendedIFModelZeroSizeLeaf"
+    extendedIFModel1.write.overwrite().save(savePath)
+    val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
+    deleteDirectory(new File(savePath))
+
+    // Assert model params survived
+    Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
+    Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
+    Assert.assertEquals(
+      extendedIFModel1.getOutlierScoreThreshold,
+      extendedIFModel2.getOutlierScoreThreshold,
+    )
+
+    // Assert the tree structure survived, including the zero-size leaf
+    Assert.assertEquals(extendedIFModel2.extendedIsolationTrees.length, 1)
+    assertTreesEqual(
+      extendedIFModel1.extendedIsolationTrees.head.extendedNode,
+      extendedIFModel2.extendedIsolationTrees.head.extendedNode,
+    )
+
+    // Explicitly verify the zero-size leaf is preserved
+    val loadedRoot = extendedIFModel2.extendedIsolationTrees.head.extendedNode
+      .asInstanceOf[ExtendedInternalNode]
+    val loadedLeftLeaf = loadedRoot.leftChild.asInstanceOf[ExtendedExternalNode]
+    Assert.assertEquals(loadedLeftLeaf.numInstances, 0L, "zero-size leaf must survive save/load")
 
     spark.stop()
   }
