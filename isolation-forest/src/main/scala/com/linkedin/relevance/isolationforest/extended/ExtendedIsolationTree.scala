@@ -217,10 +217,10 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
               var t = 0
               while (t < numFeatures) { splitOffset += normSplitVector(t) * p(t); t += 1 }
 
-              // Partition: paper's Algorithms 2 & 3 use (x - p) · n ≤ 0 for the left branch,
-              // which is equivalent to x·n ≤ p·n (= splitOffset).
+              // Partition: reference implementation uses (x - p) · n < 0 for the left branch,
+              // which is equivalent to x·n < p·n (= splitOffset).
               val (leftData, rightData) = data.partition { point =>
-                dot(normSplitVector, point) <= splitOffset
+                dot(normSplitVector, point) < splitOffset
               }
 
               // One side empty means this split is degenerate — retry
@@ -306,8 +306,8 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
           currentPathLength + Utils.avgPathLength(numInstances)
         case ExtendedInternalNode(left, right, splitHyperplane) =>
           val dpVal = dot(splitHyperplane.norm, dataInstance)
-          // Match Algorithm 3’s test: (x - p) · n ≤ 0 ⇒ x·n ≤ p·n (= offset) goes left.
-          if (dpVal <= splitHyperplane.offset) {
+          // Match reference implementation: (x - p) · n < 0 ⇒ x·n < p·n (= offset) goes left.
+          if (dpVal < splitHyperplane.offset) {
             pathLengthInternal(dataInstance, left, currentPathLength + 1)
           } else {
             pathLengthInternal(dataInstance, right, currentPathLength + 1)
@@ -319,7 +319,7 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
 
   /**
    * Compute x · n where `splitVector` is the *full-length* normal (zeros in coordinates not used by
-   * this node), matching the paper's test (x - p) · n ≤ 0.
+   * this node), matching the reference implementation's test (x - p) · n < 0.
    *
    * @param splitVector
    *   array of length == point.features.length
