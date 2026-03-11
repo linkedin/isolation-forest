@@ -1,3 +1,12 @@
+/*
+ * This file uses modified code from the spark.ml files treeModels.scala,
+ * RandomForestClassifier.scala, and ReadWrite.scala, which are open sourced under the Apache 2.0
+ * license.
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ */
+
 package com.linkedin.relevance.isolationforest.core
 
 import com.linkedin.relevance.isolationforest.IsolationTree

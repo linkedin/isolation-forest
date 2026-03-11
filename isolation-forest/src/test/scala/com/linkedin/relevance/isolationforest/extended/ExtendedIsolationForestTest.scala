@@ -1,6 +1,7 @@
 package com.linkedin.relevance.isolationforest.extended
 
 import com.linkedin.relevance.isolationforest.core.TestUtils._
+import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.scalactic.Tolerance._
 import org.scalactic.TripleEquals._
@@ -252,6 +253,79 @@ class ExtendedIsolationForestTest {
         s"Expected AUROC > 0.7 for extensionLevel=$extLevel, but observed $auroc",
       )
     }
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestDefaultExtensionLevelDoesNotLeakAcrossFitsTest")
+  def extendedIsolationForestDefaultExtensionLevelDoesNotLeakAcrossFitsTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val fourFeatureData = Seq(
+      (0.0, 1.0, 2.0, 3.0),
+      (1.0, 2.0, 3.0, 4.0),
+      (2.0, 3.0, 4.0, 5.0),
+      (3.0, 4.0, 5.0, 6.0),
+      (4.0, 5.0, 6.0, 7.0),
+    ).toDF("f0", "f1", "f2", "f3")
+    val twoFeatureData = Seq(
+      (0.0, 1.0),
+      (1.0, 2.0),
+      (2.0, 3.0),
+      (3.0, 4.0),
+      (4.0, 5.0),
+    ).toDF("f0", "f1")
+
+    val fourFeatureAssembler = new VectorAssembler()
+      .setInputCols(Array("f0", "f1", "f2", "f3"))
+      .setOutputCol("features")
+    val twoFeatureAssembler = new VectorAssembler()
+      .setInputCols(Array("f0", "f1"))
+      .setOutputCol("features")
+
+    val fourFeatureDataset = fourFeatureAssembler.transform(fourFeatureData).select("features")
+    val twoFeatureDataset = twoFeatureAssembler.transform(twoFeatureData).select("features")
+
+    val extendedIsolationForest = new ExtendedIsolationForest()
+      .setNumEstimators(5)
+      .setBootstrap(false)
+      .setMaxSamples(4)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.0)
+      .setRandomSeed(1)
+
+    Assert.assertFalse(
+      extendedIsolationForest.isSet(extendedIsolationForest.extensionLevel),
+      "extensionLevel should not be set before fitting when the user did not specify it",
+    )
+
+    val fourFeatureModel = extendedIsolationForest.fit(fourFeatureDataset)
+    Assert.assertEquals(
+      fourFeatureModel.getExtensionLevel,
+      3,
+      "default extensionLevel should resolve to numFeatures - 1 for the first fit",
+    )
+    Assert.assertFalse(
+      extendedIsolationForest.isSet(extendedIsolationForest.extensionLevel),
+      "fit() should not mutate the estimator with a resolved default extensionLevel",
+    )
+
+    val twoFeatureModel = extendedIsolationForest.fit(twoFeatureDataset)
+    Assert.assertEquals(
+      twoFeatureModel.getExtensionLevel,
+      1,
+      "default extensionLevel should be re-resolved for each fit based on that dataset",
+    )
+    Assert.assertFalse(
+      extendedIsolationForest.isSet(extendedIsolationForest.extensionLevel),
+      "estimator should remain unset after repeated fits when extensionLevel was not user-specified",
+    )
 
     spark.stop()
   }

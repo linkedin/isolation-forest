@@ -81,6 +81,10 @@ class IsolationForestModel(
    */
   override def transform(data: Dataset[_]): DataFrame = {
 
+    require(
+      isolationTrees.nonEmpty,
+      "Cannot score with an empty IsolationForestModel.",
+    )
     transformSchema(data.schema, logging = true)
 
     val avgPath = avgPathLength(numSamples)

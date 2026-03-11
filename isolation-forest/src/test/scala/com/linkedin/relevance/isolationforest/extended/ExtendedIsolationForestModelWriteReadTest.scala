@@ -1,16 +1,10 @@
-package com.linkedin.relevance.isolationforest
+package com.linkedin.relevance.isolationforest.extended
 
 import com.linkedin.relevance.isolationforest.core.TestUtils.{
   LabeledDataPointVector,
   ScoringResult,
   getSparkSession,
   loadMammographyData,
-}
-import com.linkedin.relevance.isolationforest.extended.{
-  ExtendedIsolationForest,
-  ExtendedIsolationForestModel,
-  ExtendedIsolationTree,
-  ExtendedUtils,
 }
 import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
   ExtendedExternalNode,
@@ -20,6 +14,7 @@ import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.testng.Assert
 import org.testng.annotations.Test
@@ -285,6 +280,26 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     Assert.assertEquals(extendedIFModel2.extendedIsolationTrees.length, 0)
 
     spark.stop()
+  }
+
+  @Test(
+    description = "emptyExtendedIsolationForestModelTransformThrowsTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def emptyExtendedIsolationForestModelTransformThrowsTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = Seq(Tuple1(Vectors.dense(1.0, 2.0))).toDF("features")
+    val emptyModel =
+      new ExtendedIsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
+
+    try
+      emptyModel.transform(data)
+    finally
+      spark.stop()
   }
 
   @Test(description = "extendedIsolationForestZeroSizeLeafWriteReadTest")
