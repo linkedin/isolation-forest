@@ -56,7 +56,7 @@ created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the Lin
 
 ### Building the library
 
-To build using the default of Scala 2.13.14 and Spark 3.5.1, run the following:
+To build using the default of Scala 2.13.14 and Spark 3.5.5, run the following:
 
 ```bash
 ./gradlew build
@@ -67,7 +67,7 @@ If you want to use the library with arbitrary Spark and Scala versions, you can 
 build command.
 
 ```bash
-./gradlew build -PsparkVersion=3.5.1 -PscalaVersion=2.13.14
+./gradlew build -PsparkVersion=3.5.5 -PscalaVersion=2.13.14
 ```
 
 To force a rebuild of the library, you can use:
@@ -90,7 +90,7 @@ artifact versions.
 The artifacts are available in Maven Central, so you can specify the Maven Central repository in the top-level
 `build.gradle` file.
 
-```
+```groovy
 repositories {
     mavenCentral()
 }
@@ -99,9 +99,9 @@ repositories {
 Add the isolation-forest dependency to the module-level `build.gradle` file. Here is an example for a recent
 spark scala version combination.
 
-```
+```groovy
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_3.5.1_2.13:3.2.3'
+    implementation("com.linkedin.isolation-forest:isolation-forest_3.5.5_2.13:<latest-version>")
 }
 ```
 
@@ -110,11 +110,11 @@ dependencies {
 If you are using the Maven Central repository, declare the isolation-forest dependency in your project's `pom.xml` file.
 Here is an example for a recent Spark/Scala version combination.
 
-```
+```xml
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
-  <artifactId>isolation-forest_3.5.1_2.13</artifactId>
-  <version>3.2.3</version>
+  <artifactId>isolation-forest_3.5.5_2.13</artifactId>
+  <version>&lt;latest-version&gt;</version>
 </dependency>
 ```
 
@@ -142,12 +142,13 @@ Here is an example demonstrating how to import the library, create a new `Isolat
 instance, set the model hyperparameters, train the model, and then score the training data. `data`
 is a Spark DataFrame with a column named `features` that contains a
 `org.apache.spark.ml.linalg.Vector` of the attributes to use for training. In this example, the
-DataFrame `data` also has a `labels` column; it is not used in the training process, but could
+DataFrame `data` also has a `label` column; it is not used in the training process, but could
 be useful for model evaluation.
 
 ```scala
 import com.linkedin.relevance.isolationforest._
 import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.sql.functions.col
 
 /**
   * Load and prepare data
@@ -287,7 +288,7 @@ val extendedIsolationForest = new ExtendedIsolationForest()
   .setScoreCol("outlierScore")
   .setContamination(contamination)
   .setContaminationError(0.01 * contamination)
-  .setExtensionLevel(5)  // Use 6 non-zero coordinates per hyperplane
+  .setExtensionLevel(5)  // For a 6-feature dataset, use 6 non-zero coordinates per hyperplane
   .setRandomSeed(1)
 
 val extendedIsolationForestModel = extendedIsolationForest.fit(data)
@@ -318,7 +319,7 @@ The ONNX converter can be installed using `pip`. It is recommended to use the sa
 version of the `isolation-forest` library used to train the model.
 
 ```bash
-pip install isolation-forest-onnx==3.2.7
+pip install isolation-forest-onnx==<matching-version>
 ```
 
 You can then import and use the converter in Python.
@@ -359,6 +360,8 @@ from onnxruntime import InferenceSession
 # `onnx_model_path` the same path used above in the convert and save operation
 onnx_model_path = '/user/testuser/isolationForestWriteTest.onnx'
 dataset_path = 'isolation-forest-onnx/test/resources/shuttle.csv'
+dataset_name = 'shuttle'
+num_examples_to_print = 10
 
 # Load data
 input_data = np.loadtxt(dataset_path, delimiter=',')
@@ -385,7 +388,7 @@ print(np.transpose(actual_outlier_scores[:num_examples_to_print])[0])
 
 We benchmarked the standard Isolation Forest (`StandardIF`), Extended Isolation Forest at extension
 level 0 (`ExtendedIF_0`), and the fully extended variant (`ExtendedIF_max`) against the Liu et al.
-2008 paper results, our previous implementation (`LI IF`), and the
+2008 paper results and the
 [reference Python EIF implementation](https://github.com/sahandha/eif) (`Ref Python`). All results
 use 100 trees, 256 samples per tree, 10 trials with unique random seeds, and report the mean
 &plusmn; standard error of the mean. The `Ref Python` columns show EIF results at the corresponding
