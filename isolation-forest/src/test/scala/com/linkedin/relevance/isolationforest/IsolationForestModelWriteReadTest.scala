@@ -10,6 +10,7 @@ import com.linkedin.relevance.isolationforest.core.TestUtils.{
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.testng.Assert
 import org.testng.annotations.Test
@@ -252,6 +253,25 @@ class IsolationForestModelWriteReadTest extends Logging {
     Assert.assertEquals(isolationForestModel2.isolationTrees.length, 0)
 
     spark.stop()
+  }
+
+  @Test(
+    description = "emptyIsolationForestModelTransformThrowsTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def emptyIsolationForestModelTransformThrowsTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = Seq(Tuple1(Vectors.dense(1.0, 2.0))).toDF("features")
+    val emptyModel = new IsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
+
+    try
+      emptyModel.transform(data)
+    finally
+      spark.stop()
   }
 
   @Test(description = "savedIsolationForestModelTreeStructureTest")
