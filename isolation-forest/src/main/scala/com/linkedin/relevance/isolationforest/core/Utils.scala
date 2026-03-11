@@ -1,6 +1,6 @@
 package com.linkedin.relevance.isolationforest.core
 
-import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.{SQLDataTypes, Vector}
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
 
 /**
@@ -44,8 +44,8 @@ private[isolationforest] object Utils extends Serializable {
       s"Input column ${featuresCol} does not exist.",
     )
     require(
-      schema(featuresCol).dataType == VectorType,
-      s"Input column ${featuresCol} is not of required type ${VectorType}",
+      schema(featuresCol).dataType == SQLDataTypes.VectorType,
+      s"Input column ${featuresCol} is not of required type ${SQLDataTypes.VectorType}",
     )
 
     require(
@@ -63,6 +63,13 @@ private[isolationforest] object Utils extends Serializable {
 
     StructType(outputFields)
   }
+
+  def validateFeatureVectorSize(features: Vector, expectedNumFeatures: Int): Unit =
+    require(
+      features.size == expectedNumFeatures,
+      s"Input feature vector size ${features.size} did not match the model's training dimension" +
+        s" ${expectedNumFeatures}.",
+    )
 
   val EulerConstant = 0.5772156649f
 

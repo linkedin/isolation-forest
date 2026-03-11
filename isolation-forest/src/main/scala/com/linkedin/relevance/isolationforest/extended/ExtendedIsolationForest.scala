@@ -96,6 +96,7 @@ class ExtendedIsolationForest(override val uid: String)
         extendedIsolationTrees,
         resolvedParams.numSamples,
         resolvedParams.numFeatures,
+        resolvedParams.totalNumFeatures,
       ).setParent(this),
     )
     extendedIsolationForestModel.set(extensionLevel, resolvedExtensionLevel)
@@ -121,7 +122,7 @@ class ExtendedIsolationForest(override val uid: String)
 /**
  * Companion object to the ExtendedIsolationForest class.
  */
-object ExtendedIsolationForest extends DefaultParamsReadable[ExtendedIsolationForest] {
+case object ExtendedIsolationForest extends DefaultParamsReadable[ExtendedIsolationForest] {
 
   /**
    * Loads a saved ExtendedIsolationForest Estimator ML instance.

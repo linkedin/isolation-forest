@@ -86,6 +86,7 @@ class IsolationForest(override val uid: String)
         isolationTrees,
         resolvedParams.numSamples,
         resolvedParams.numFeatures,
+        resolvedParams.totalNumFeatures,
       )
         .setParent(this),
     )

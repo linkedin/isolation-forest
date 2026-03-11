@@ -7,6 +7,7 @@ import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
 import com.linkedin.relevance.isolationforest.core.TestUtils.readCsv
 import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
 import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
+import org.apache.spark.ml.linalg.Vectors
 import org.testng.Assert
 import org.testng.annotations.Test
 
@@ -33,7 +34,8 @@ class ExtendedIsolationTreeTest {
 
     val leftChild = ExtendedExternalNode(10)
     val rightChild = ExtendedExternalNode(20)
-    val splitHyperplane = SplitHyperplane(Array(0.7071067812, 0.7071067812), 2.5)
+    val splitHyperplane =
+      SplitHyperplane(Array(0, 1), Array(0.7071067812, 0.7071067812), 2.5)
     val root = ExtendedInternalNode(leftChild, rightChild, splitHyperplane)
 
     val data1 = DataPoint(Array(1.0f, 2.0f))
@@ -63,7 +65,7 @@ class ExtendedIsolationTreeTest {
     // Build a tree: root splits left=zeroLeaf, right=normalLeaf.
     val zeroLeaf = ExtendedExternalNode(0)
     val normalLeaf = ExtendedExternalNode(5)
-    val splitHyperplane = SplitHyperplane(Array(1.0, 0.0), 0.5)
+    val splitHyperplane = SplitHyperplane(Array(0), Array(1.0), 0.5)
     val root = ExtendedInternalNode(zeroLeaf, normalLeaf, splitHyperplane)
 
     // Point that goes left (dot = 0.0 < 0.5 offset) — hits the zero-size leaf
@@ -78,6 +80,69 @@ class ExtendedIsolationTreeTest {
     // Expected: currentPathLength(1) + avgPathLength(5) > 1.0
     Assert.assertTrue(pathLengthRight > 1.0f, "path through non-zero leaf should exceed 1.0")
   }
+
+  @Test(description = "pathLengthVectorMatchesDataPointTest")
+  def pathLengthVectorMatchesDataPointTest(): Unit = {
+
+    val leftChild = ExtendedExternalNode(10)
+    val rightChild = ExtendedExternalNode(20)
+    val splitHyperplane = SplitHyperplane(Array(0, 2), Array(0.6, 0.8), 2.4)
+    val tree = new ExtendedIsolationTree(
+      ExtendedInternalNode(leftChild, rightChild, splitHyperplane),
+    )
+
+    val point = DataPoint(Array(1.0f, 3.0f, 2.0f))
+    val vector = Vectors.dense(1.0, 3.0, 2.0)
+
+    Assert.assertEquals(tree.calculatePathLength(point), tree.calculatePathLength(vector))
+  }
+
+  @Test(description = "splitHyperplaneDotMatchesDenseReferenceTest")
+  def splitHyperplaneDotMatchesDenseReferenceTest(): Unit = {
+
+    val splitHyperplane = SplitHyperplane(Array(1, 3), Array(0.25, -0.75), 1.0)
+    val point = DataPoint(Array(2.0f, 4.0f, 6.0f, 8.0f))
+    val features = Vectors.sparse(4, Seq((1, 4.0), (3, 8.0)))
+    val expectedDot = 0.25 * 4.0 + -0.75 * 8.0
+
+    Assert.assertEquals(splitHyperplane.dot(point), expectedDot, 1e-12)
+    Assert.assertEquals(splitHyperplane.dot(features), expectedDot, 1e-12)
+  }
+
+  @Test(
+    description = "splitHyperplaneRejectsEmptyIndicesTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def splitHyperplaneRejectsEmptyIndicesTest(): Unit =
+    SplitHyperplane(Array.emptyIntArray, Array.emptyDoubleArray, 0.0)
+
+  @Test(
+    description = "splitHyperplaneRejectsMismatchedLengthsTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def splitHyperplaneRejectsMismatchedLengthsTest(): Unit =
+    SplitHyperplane(Array(0, 1), Array(1.0), 0.0)
+
+  @Test(
+    description = "splitHyperplaneRejectsNegativeIndicesTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def splitHyperplaneRejectsNegativeIndicesTest(): Unit =
+    SplitHyperplane(Array(-1, 2), Array(1.0, 2.0), 0.0)
+
+  @Test(
+    description = "splitHyperplaneRejectsDuplicateIndicesTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def splitHyperplaneRejectsDuplicateIndicesTest(): Unit =
+    SplitHyperplane(Array(1, 1), Array(1.0, 2.0), 0.0)
+
+  @Test(
+    description = "splitHyperplaneRejectsUnsortedIndicesTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def splitHyperplaneRejectsUnsortedIndicesTest(): Unit =
+    SplitHyperplane(Array(2, 0), Array(1.0, 2.0), 0.0)
 
   @Test(description = "hyperplaneNormalsAreL2NormalizedTest")
   def hyperplaneNormalsAreL2NormalizedTest(): Unit = {
@@ -112,7 +177,7 @@ class ExtendedIsolationTreeTest {
 
       def assertNormalized(node: ExtendedNodes.ExtendedNode): Unit = node match {
         case ExtendedInternalNode(left, right, hp) =>
-          val l2Norm = math.sqrt(hp.norm.map(x => x * x).sum)
+          val l2Norm = math.sqrt(hp.weights.map(x => x * x).sum)
           Assert.assertEquals(
             l2Norm,
             1.0,
@@ -159,7 +224,7 @@ class ExtendedIsolationTreeTest {
     // Walk the tree and check that every internal node's norm has exactly 1 non-zero entry
     def assertAxisAligned(node: ExtendedNodes.ExtendedNode): Unit = node match {
       case ExtendedInternalNode(left, right, hp) =>
-        val nonZeroCount = hp.norm.count(_ != 0.0)
+        val nonZeroCount = hp.indices.length
         Assert.assertEquals(
           nonZeroCount,
           1,
@@ -171,5 +236,59 @@ class ExtendedIsolationTreeTest {
     }
 
     assertAxisAligned(root)
+  }
+
+  @Test(description = "extensionLevelControlsSparseCoordinateCountTest")
+  def extensionLevelControlsSparseCoordinateCountTest(): Unit = {
+
+    val data = Array(
+      DataPoint(Array(1.0f, 2.0f, 3.0f, 4.0f)),
+      DataPoint(Array(4.0f, 5.0f, 6.0f, 7.0f)),
+      DataPoint(Array(7.0f, 8.0f, 9.0f, 1.0f)),
+      DataPoint(Array(2.0f, 3.0f, 1.0f, 5.0f)),
+      DataPoint(Array(5.0f, 1.0f, 4.0f, 8.0f)),
+      DataPoint(Array(8.0f, 6.0f, 2.0f, 9.0f)),
+    )
+
+    val featureIndices = Array(0, 2, 3)
+    val expectedIndices = featureIndices.toSet
+
+    for (extensionLevel <- 0 to 2) {
+      val randomState = new scala.util.Random(extensionLevel + 10L)
+      val root = ExtendedIsolationTree.generateExtendedIsolationTree(
+        data,
+        heightLimit = 4,
+        randomState,
+        featureIndices,
+        extensionLevel,
+      )
+
+      val expectedNonZeroCount = math.min(extensionLevel + 1, featureIndices.length)
+
+      def assertSparseStructure(node: ExtendedNodes.ExtendedNode): Unit = node match {
+        case ExtendedInternalNode(left, right, hp) =>
+          Assert.assertEquals(
+            hp.indices.length,
+            expectedNonZeroCount,
+            s"extensionLevel=$extensionLevel should store $expectedNonZeroCount coordinates per internal node",
+          )
+          Assert.assertEquals(hp.weights.length, expectedNonZeroCount)
+          Assert.assertTrue(
+            hp.indices.sameElements(hp.indices.sorted),
+            s"Stored feature indices should be in ascending order, but observed ${hp.indices.mkString(",")}",
+          )
+          hp.indices.foreach { index =>
+            Assert.assertTrue(
+              expectedIndices.contains(index),
+              s"Stored feature index $index was not in the selected tree subspace",
+            )
+          }
+          assertSparseStructure(left)
+          assertSparseStructure(right)
+        case _: ExtendedExternalNode => // leaf, nothing to check
+      }
+
+      assertSparseStructure(root)
+    }
   }
 }

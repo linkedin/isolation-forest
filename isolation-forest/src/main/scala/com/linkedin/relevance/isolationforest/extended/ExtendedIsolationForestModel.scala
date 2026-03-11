@@ -1,8 +1,8 @@
 package com.linkedin.relevance.isolationforest.extended
 
 import com.linkedin.relevance.isolationforest.core.Utils.{
-  DataPoint,
   avgPathLength,
+  validateFeatureVectorSize,
   validateAndTransformSchema,
 }
 import org.apache.spark.ml.Model
@@ -25,12 +25,15 @@ import org.apache.spark.sql.{DataFrame, Dataset}
  *   The number of samples used to train each tree.
  * @param numFeatures
  *   The number of features used in each tree's hyperplane subspace.
+ * @param totalNumFeatures
+ *   The total number of input features seen during training.
  */
-class ExtendedIsolationForestModel(
+class ExtendedIsolationForestModel private[isolationforest] (
   override val uid: String,
   val extendedIsolationTrees: Array[ExtendedIsolationTree],
   private val numSamples: Int,
   private val numFeatures: Int,
+  private val totalNumFeatures: Int,
 ) extends Model[ExtendedIsolationForestModel]
     with ExtendedIsolationForestParams
     with MLWritable {
@@ -43,6 +46,17 @@ class ExtendedIsolationForestModel(
     s"parameter numFeatures must be >0, but given invalid value ${numFeatures}",
   )
   final def getNumFeatures: Int = numFeatures
+
+  require(
+    totalNumFeatures > 0,
+    s"parameter totalNumFeatures must be >0, but given invalid value ${totalNumFeatures}",
+  )
+  require(
+    numFeatures <= totalNumFeatures,
+    s"parameter numFeatures must be <= totalNumFeatures, but given invalid values" +
+      s" numFeatures=${numFeatures}, totalNumFeatures=${totalNumFeatures}",
+  )
+  final def getTotalNumFeatures: Int = totalNumFeatures
 
   // The outlierScoreThreshold needs to be a mutable variable because it is not known when an
   // ExtendedIsolationForestModel instance is created.
@@ -65,6 +79,7 @@ class ExtendedIsolationForestModel(
       extendedIsolationTrees,
       numSamples,
       numFeatures,
+      totalNumFeatures,
     ).setParent(this.parent)
     extendedIsolationForestCopy.setOutlierScoreThreshold(outlierScoreThreshold)
 
@@ -83,6 +98,10 @@ class ExtendedIsolationForestModel(
   override def transform(data: Dataset[_]): DataFrame = {
 
     require(
+      numSamples >= 2,
+      s"Cannot score with numSamples=$numSamples; expected numSamples >= 2.",
+    )
+    require(
       extendedIsolationTrees.nonEmpty,
       "Cannot score with an empty ExtendedIsolationForestModel.",
     )
@@ -93,8 +112,9 @@ class ExtendedIsolationForestModel(
       .broadcast(extendedIsolationTrees)
 
     val calculatePathLength = (features: Vector) => {
+      validateFeatureVectorSize(features, totalNumFeatures)
       val pathLength = broadcastExtendedIsolationTrees.value
-        .map(y => y.calculatePathLength(DataPoint(features.toArray.map(x => x.toFloat))))
+        .map(y => y.calculatePathLength(features))
         .sum / broadcastExtendedIsolationTrees.value.length
       Math.pow(2, -pathLength / avgPath)
     }

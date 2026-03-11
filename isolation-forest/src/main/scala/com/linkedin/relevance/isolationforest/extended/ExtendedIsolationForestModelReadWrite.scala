@@ -18,9 +18,9 @@ import com.linkedin.relevance.isolationforest.core.IsolationForestModelReadWrite
 import com.linkedin.relevance.isolationforest.extended.ExtendedNodes._
 import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
 import org.apache.spark.ml.util._
-import org.apache.spark.sql.SparkSession
 import org.apache.hadoop.fs.Path
 import org.apache.spark.internal.Logging
+import org.apache.spark.sql.SparkSession
 import org.json4s.jackson.JsonMethods._
 import org.json4s.{DefaultFormats, JObject}
 import org.json4s.JsonDSL._
@@ -30,7 +30,8 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   //   ExtendedNodeData constants
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  val NullNorm: Array[Double] = Array.emptyDoubleArray
+  val NullIndices: Array[Int] = Array.emptyIntArray
+  val NullWeights: Array[Double] = Array.emptyDoubleArray
   val NullOffset: Double = 0.0
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -46,8 +47,10 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
    *   Index of the left child, or -1 if leaf.
    * @param rightChild
    *   Index of the right child, or -1 if leaf.
-   * @param norm
-   *   Random hyperplane normal vector. Empty if leaf.
+   * @param indices
+   *   Global feature indices for the non-zero hyperplane coordinates. Empty if leaf.
+   * @param weights
+   *   Weights for the non-zero hyperplane coordinates. Empty if leaf.
    * @param offset
    *   Random hyperplane offset. 0.0 if leaf.
    * @param numInstances
@@ -57,7 +60,8 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
     id: Int,
     leftChild: Int,
     rightChild: Int,
-    norm: Array[Double],
+    indices: Array[Int],
+    weights: Array[Double],
     offset: Double,
     numInstances: Long,
   )
@@ -100,7 +104,8 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
               id = id,
               leftChild = leftNodeData.head.id,
               rightChild = rightNodeData.head.id,
-              norm = splitHyperplane.norm,
+              indices = splitHyperplane.indices,
+              weights = splitHyperplane.weights,
               offset = splitHyperplane.offset,
               numInstances = NullNumInstances,
             )
@@ -108,12 +113,14 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
             (thisNodeData +: (leftNodeData ++ rightNodeData), rightIdx)
 
           case ExtendedExternalNode(numInst) =>
-            // Leaf node: leftChild/rightChild = -1, norm is empty, offset=0, numInstances is stored
+            // Leaf node: leftChild/rightChild = -1, indices/weights are empty, offset=0, and
+            // numInstances is stored.
             val leafData = ExtendedNodeData(
               id = id,
               leftChild = NullNodeId,
               rightChild = NullNodeId,
-              norm = NullNorm,
+              indices = NullIndices,
+              weights = NullWeights,
               offset = NullOffset,
               numInstances = numInst,
             )
@@ -194,7 +201,7 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
         // Internal node => ExtendedInternalNode with a random hyperplane
         val left = finalNodes(nd.leftChild)
         val right = finalNodes(nd.rightChild)
-        val hyperplane = SplitHyperplane(nd.norm, nd.offset)
+        val hyperplane = SplitHyperplane(nd.indices, nd.weights, nd.offset)
         finalNodes(nd.id) = ExtendedInternalNode(left, right, hyperplane)
       }
     }
@@ -210,9 +217,7 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
    * @param model
    *   The ExtendedIsolationForestModel instance to write.
    */
-  class ExtendedIsolationForestModelWriter(model: ExtendedIsolationForestModel)
-      extends MLWriter
-      with Logging {
+  class ExtendedIsolationForestModelWriter(model: ExtendedIsolationForestModel) extends MLWriter {
 
     /**
      * Main entry point for saving the model. Spark ML calls this automatically.
@@ -225,7 +230,8 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
       val extraMetadata: JObject =
         ("outlierScoreThreshold" -> model.getOutlierScoreThreshold) ~
           ("numSamples" -> model.getNumSamples) ~
-          ("numFeatures" -> model.getNumFeatures)
+          ("numFeatures" -> model.getNumFeatures) ~
+          ("totalNumFeatures" -> model.getTotalNumFeatures)
 
       // 2) Delegate to a helper function that does the actual writing
       saveImplHelper(path, sparkSession, extraMetadata)
@@ -286,13 +292,11 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
       val dataPath = new Path(path, "data").toString
       logInfo(s"Loading extended tree data from path $dataPath")
 
-      // Read Avro data into Dataset[ExtendedEnsembleNodeData]
       val ds = spark.read
         .format("avro")
         .load(dataPath)
         .as[ExtendedEnsembleNodeData]
 
-      // Group each tree's nodes by treeID, then call buildTree(...) to produce a root node
       val rootNodesRDD = ds.rdd
         .map(e => (e.treeID, e.extendedNodeData))
         .groupByKey()
@@ -325,6 +329,7 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
       // 2) Extract basic parameters from metadata
       val numSamples = (metadata.metadata \ "numSamples").extract[Int]
       val numFeatures = (metadata.metadata \ "numFeatures").extract[Int]
+      val totalNumFeatures = (metadata.metadata \ "totalNumFeatures").extract[Int]
       val threshold = (metadata.metadata \ "outlierScoreThreshold").extract[Double]
 
       // 3) Load & rebuild each extended tree, returning an array of ExtendedNode
@@ -339,6 +344,7 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
         extendedIsolationTrees = extendedTrees,
         numSamples = numSamples,
         numFeatures = numFeatures,
+        totalNumFeatures = totalNumFeatures,
       )
 
       // 5) Restore spark.ml Params from metadata, then set the outlier threshold
