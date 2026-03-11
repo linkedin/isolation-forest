@@ -6,15 +6,14 @@ import com.linkedin.relevance.isolationforest.core.SharedTrainLogic.{
   trainIsolationTrees,
   validateAndResolveParams,
 }
-import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
+import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, validateAndTransformSchema}
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.Estimator
-import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
+import org.apache.spark.sql.types.StructType
 
 /**
  * Used to train an extended isolation forest model. It extends the spark.ml Estimator class.
@@ -114,44 +113,8 @@ class ExtendedIsolationForest(override val uid: String)
     extendedIsolationForestModel
   }
 
-  /**
-   * Validates the input schema and transforms it into the output schema. It validates that the
-   * input DataFrame has a $(featuresCol) of the correct type and appends the output columns to the
-   * input schema. It also ensures that the input DataFrame does not already have $(predictionCol)
-   * or $(scoreCol) columns, as they will be created during the fitting process.
-   *
-   * @param schema
-   *   The schema of the DataFrame containing the data to be fit.
-   * @return
-   *   The schema of the DataFrame containing the data to be fit, with the additional
-   *   $(predictionCol) and $(scoreCol) columns added.
-   */
-  override def transformSchema(schema: StructType): StructType = {
-
-    require(
-      schema.fieldNames.contains($(featuresCol)),
-      s"Input column ${$(featuresCol)} does not exist.",
-    )
-    require(
-      schema($(featuresCol)).dataType == VectorType,
-      s"Input column ${$(featuresCol)} is not of required type ${VectorType}",
-    )
-
-    require(
-      !schema.fieldNames.contains($(predictionCol)),
-      s"Output column ${$(predictionCol)} already exists.",
-    )
-    require(
-      !schema.fieldNames.contains($(scoreCol)),
-      s"Output column ${$(scoreCol)} already exists.",
-    )
-
-    val outputFields = schema.fields :+
-      StructField($(predictionCol), DoubleType, nullable = false) :+
-      StructField($(scoreCol), DoubleType, nullable = false)
-
-    StructType(outputFields)
-  }
+  override def transformSchema(schema: StructType): StructType =
+    validateAndTransformSchema(schema, $(featuresCol), $(predictionCol), $(scoreCol))
 
 }
 
