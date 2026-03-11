@@ -6,7 +6,6 @@ import com.linkedin.relevance.isolationforest.core.IsolationForestModelReadWrite
   loadMetadata,
   saveMetadata,
 }
-import com.linkedin.relevance.isolationforest.extended.ExtendedIsolationForestModel
 import com.linkedin.relevance.isolationforest.extended.ExtendedNodes._
 import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
 import org.apache.spark.ml.util._
