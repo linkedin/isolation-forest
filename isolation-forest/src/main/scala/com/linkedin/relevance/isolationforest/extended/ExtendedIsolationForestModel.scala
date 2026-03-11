@@ -45,7 +45,7 @@ class ExtendedIsolationForestModel(
   final def getNumFeatures: Int = numFeatures
 
   // The outlierScoreThreshold needs to be a mutable variable because it is not known when an
-  // IsolationForestModel instance is created.
+  // ExtendedIsolationForestModel instance is created.
   private var outlierScoreThreshold: Double = -1
   private[isolationforest] def setOutlierScoreThreshold(value: Double): Unit = {
 
@@ -125,7 +125,7 @@ class ExtendedIsolationForestModel(
 }
 
 /**
- * Companion object to the IsolationForestModel class.
+ * Companion object to the ExtendedIsolationForestModel class.
  */
 case object ExtendedIsolationForestModel extends MLReadable[ExtendedIsolationForestModel] {
 
