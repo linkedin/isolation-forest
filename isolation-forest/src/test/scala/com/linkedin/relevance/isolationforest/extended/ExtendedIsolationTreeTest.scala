@@ -79,6 +79,56 @@ class ExtendedIsolationTreeTest {
     Assert.assertTrue(pathLengthRight > 1.0f, "path through non-zero leaf should exceed 1.0")
   }
 
+  @Test(description = "hyperplaneNormalsAreL2NormalizedTest")
+  def hyperplaneNormalsAreL2NormalizedTest(): Unit = {
+
+    // Every internal node's norm vector should have L2 norm = 1.0
+    val data = Array(
+      DataPoint(Array(1.0f, 2.0f, 3.0f)),
+      DataPoint(Array(4.0f, 5.0f, 6.0f)),
+      DataPoint(Array(7.0f, 8.0f, 9.0f)),
+      DataPoint(Array(2.0f, 3.0f, 1.0f)),
+      DataPoint(Array(5.0f, 1.0f, 4.0f)),
+      DataPoint(Array(8.0f, 6.0f, 2.0f)),
+      DataPoint(Array(3.0f, 9.0f, 7.0f)),
+      DataPoint(Array(6.0f, 4.0f, 8.0f)),
+    )
+
+    val featureIndices = Array(0, 1, 2)
+
+    // Test across multiple extension levels and seeds
+    for {
+      extLevel <- 0 to 2
+      seed <- Seq(1L, 42L, 123L)
+    } {
+      val randomState = new scala.util.Random(seed)
+      val root = ExtendedIsolationTree.generateExtendedIsolationTree(
+        data,
+        heightLimit = 4,
+        randomState,
+        featureIndices,
+        extensionLevel = extLevel,
+      )
+
+      def assertNormalized(node: ExtendedNodes.ExtendedNode): Unit = node match {
+        case ExtendedInternalNode(left, right, hp) =>
+          val l2Norm = math.sqrt(hp.norm.map(x => x * x).sum)
+          Assert.assertEquals(
+            l2Norm,
+            1.0,
+            1e-10,
+            s"Hyperplane norm should be L2-normalized (seed=$seed, extLevel=$extLevel)," +
+              s" but L2 norm was $l2Norm",
+          )
+          assertNormalized(left)
+          assertNormalized(right)
+        case _: ExtendedExternalNode => // leaf, nothing to check
+      }
+
+      assertNormalized(root)
+    }
+  }
+
   @Test(description = "extensionLevelZeroProducesAxisAlignedSplitsTest")
   def extensionLevelZeroProducesAxisAlignedSplitsTest(): Unit = {
 

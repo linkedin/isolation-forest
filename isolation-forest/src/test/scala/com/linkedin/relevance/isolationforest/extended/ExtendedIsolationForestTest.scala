@@ -180,6 +180,82 @@ class ExtendedIsolationForestTest {
     spark.stop()
   }
 
+  @Test(
+    description = "extendedIsolationForestExtensionLevelTooLargeThrowsTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def extendedIsolationForestExtensionLevelTooLargeThrowsTest(): Unit = {
+
+    val spark = getSparkSession
+
+    val data = loadMammographyData(spark)
+
+    // Mammography has 6 features, so max extensionLevel is 5. Setting 6 should throw.
+    val extendedIsolationForest = new ExtendedIsolationForest()
+      .setNumEstimators(10)
+      .setBootstrap(false)
+      .setMaxSamples(256)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.0)
+      .setExtensionLevel(6)
+      .setRandomSeed(1)
+
+    try
+      extendedIsolationForest.fit(data)
+    finally
+      spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestIntermediateExtensionLevelTest")
+  def extendedIsolationForestIntermediateExtensionLevelTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = loadMammographyData(spark)
+
+    // Mammography has 6 features. Test intermediate extensionLevel values (1 through 4)
+    // to verify they produce valid models with reasonable AUROC.
+    for (extLevel <- 1 to 4) {
+      val extendedIsolationForest = new ExtendedIsolationForest()
+        .setNumEstimators(100)
+        .setBootstrap(false)
+        .setMaxSamples(256)
+        .setMaxFeatures(1.0)
+        .setFeaturesCol("features")
+        .setPredictionCol("predictedLabel")
+        .setScoreCol("outlierScore")
+        .setContamination(0.0)
+        .setExtensionLevel(extLevel)
+        .setRandomSeed(1)
+
+      val model = extendedIsolationForest.fit(data)
+
+      // Verify extensionLevel was persisted correctly on the trained model
+      Assert.assertEquals(
+        model.getExtensionLevel,
+        extLevel,
+        s"extensionLevel should be $extLevel on the trained model",
+      )
+
+      val scores = model.transform(data).as[ScoringResult]
+      val metrics = new BinaryClassificationMetrics(scores.rdd.map(x => (x.outlierScore, x.label)))
+
+      // All intermediate levels should produce a reasonable model (AUROC > 0.7)
+      val auroc = metrics.areaUnderROC()
+      Assert.assertTrue(
+        auroc > 0.7,
+        s"Expected AUROC > 0.7 for extensionLevel=$extLevel, but observed $auroc",
+      )
+    }
+
+    spark.stop()
+  }
+
   @Test(description = "extendedIsolationForestShuttleDataTest")
   def extendedIsolationForestShuttleDataTest(): Unit = {
 
