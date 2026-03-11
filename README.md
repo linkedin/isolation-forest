@@ -417,7 +417,7 @@ extension level, not standard IF.
 | | | ExtendedIF_max | 0.6879 &plusmn; 0.0078 | 0.0138 &plusmn; 0.0003 | | 0.6617 &plusmn; 0.0094 | 0.0129 &plusmn; 0.0004 |
 | [Http (KDDCUP99)](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/) | 3 | StandardIF | 0.9997 &plusmn; 0.0001 | 0.9288 &plusmn; 0.0239 | 1.00 | 0.9939 &plusmn; 0.0001 | 0.3791 &plusmn; 0.0043 |
 | | | ExtendedIF_0 | 0.9941 &plusmn; 0.0001 | 0.3922 &plusmn; 0.0040 | | | |
-| | | ExtendedIF_max | 0.9941 &plusmn; 0.0001 | 0.3791 &plusmn; 0.0058 | | 0.9939 &plusmn; 0.0003 | 0.3709 &plusmn; 0.0093 |
+| | | ExtendedIF_max | 0.9941 &plusmn; 0.0001 | 0.3790 &plusmn; 0.0058 | | 0.9939 &plusmn; 0.0003 | 0.3709 &plusmn; 0.0093 |
 | [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/) | 33 | StandardIF | 0.8443 &plusmn; 0.0002 | 0.8014 &plusmn; 0.0003 | 0.85 | 0.8556 &plusmn; 0.0016 | 0.8078 &plusmn; 0.0021 |
 | | | ExtendedIF_0 | 0.8568 &plusmn; 0.0006 | 0.8108 &plusmn; 0.0007 | | | |
 | | | ExtendedIF_max | 0.9075 &plusmn; 0.0002 | 0.8804 &plusmn; 0.0002 | | 0.9061 &plusmn; 0.0014 | 0.8764 &plusmn; 0.0022 |
