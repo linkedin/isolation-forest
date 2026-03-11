@@ -1,6 +1,5 @@
 package com.linkedin.relevance.isolationforest.extended
 
-import com.linkedin.relevance.isolationforest.IsolationForestModel
 import com.linkedin.relevance.isolationforest.core.IsolationForestModelReadWriteUtils.{
   NullNodeId,
   NullNumInstances,
@@ -250,7 +249,7 @@ private[extended] case object ExtendedIsolationForestModelReadWrite extends Logg
   }
 
   /**
-   * Reader for the standard IsolationForestModel
+   * Reader for the ExtendedIsolationForestModel
    */
   class ExtendedIsolationForestModelReader extends MLReader[ExtendedIsolationForestModel] {
 

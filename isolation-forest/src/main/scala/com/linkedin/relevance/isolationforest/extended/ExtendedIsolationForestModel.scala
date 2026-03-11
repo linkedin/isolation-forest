@@ -97,7 +97,7 @@ class ExtendedIsolationForestModel(
     val transformUDF = udf(calculatePathLength)
 
     val dataWithScore = data.withColumn($(scoreCol), transformUDF(col($(featuresCol))))
-    val dataWithScoresAndPrediction = if (outlierScoreThreshold > 0.0) {
+    val dataWithScoresAndPrediction = if (outlierScoreThreshold > 0) {
       dataWithScore.withColumn(
         $(predictionCol),
         (col($(scoreCol)) >= outlierScoreThreshold).cast("double"),
