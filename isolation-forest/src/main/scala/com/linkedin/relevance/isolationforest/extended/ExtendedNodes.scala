@@ -45,7 +45,7 @@ private[isolationforest] case object ExtendedNodes {
    * @param rightChild
    *   The right child node (data points with dot >= splitOffset).
    * @param splitHyperplane
-   *   The norm vector and offset defining the hyperplane that splits the data at this node.
+   *   The sparse hyperplane defining the split at this node.
    */
   case class ExtendedInternalNode(
     leftChild: ExtendedNode,
@@ -58,7 +58,7 @@ private[isolationforest] case object ExtendedNodes {
     override val subtreeDepth: Int = 1 + math.max(leftChild.subtreeDepth, rightChild.subtreeDepth)
     override def toString: String =
       s"ExtendedInternalNode(" +
-        s"splitHyperplane=${splitHyperplane}" +
-        s" leftChild=($leftChild), rightChild=($rightChild))"
+        s"splitHyperplane = ${splitHyperplane}, " +
+        s"leftChild = ($leftChild), rightChild = ($rightChild))"
   }
 }

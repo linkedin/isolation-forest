@@ -148,7 +148,6 @@ be useful for model evaluation.
 ```scala
 import com.linkedin.relevance.isolationforest._
 import org.apache.spark.ml.feature.VectorAssembler
-import org.apache.spark.sql.functions.col
 
 /**
   * Load and prepare data
@@ -170,7 +169,8 @@ val assembler = new VectorAssembler()
   .setOutputCol("features")
 val data = assembler
   .transform(rawData)
-  .select(col("features"), col(labelCol).as("label"))
+  .withColumnRenamed(labelCol, "label")
+  .select("features", "label")
 
 // scala> data.printSchema
 // root
@@ -263,7 +263,7 @@ axis-aligned splits are sufficient and computational cost matters.
 
 | Parameter      | Default Value       | Description                                                                                                                                                                                          |
 |----------------|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| extensionLevel | numFeatures - 1     | Controls the number of non-zero coordinates in each random hyperplane normal vector. `extensionLevel + 1` coordinates are non-zero. `0` uses axis-aligned splits. The maximum value is `numFeatures - 1` (fully extended), which is the default if not set. |
+| extensionLevel | numFeatures - 1     | Controls the number of non-zero coordinates in each random hyperplane normal vector. `extensionLevel + 1` coordinates are non-zero. `0` uses axis-aligned splits. The maximum value is `numFeatures - 1` (fully extended), which is the default if not set. EIF stores these hyperplanes sparsely, so per-node storage and dot products scale with the number of non-zero coordinates rather than the full input dimension. |
 
 **Important: interaction with `maxFeatures`.** When `maxFeatures < 1.0`, each tree trains on a random
 subset of features. The `extensionLevel` is relative to this subspace, not the original dataset
@@ -271,6 +271,11 @@ dimensionality. For example, if your data has 10 features and `maxFeatures = 0.5
 features, and the valid range for `extensionLevel` is `[0, 4]`. If not set, `extensionLevel` defaults
 to `numFeatures - 1` for the resolved subspace. If you explicitly set `extensionLevel` to a value
 greater than `numFeatures - 1`, training will throw an error.
+
+EIF hyperplanes are stored in the original feature space using only their non-zero coordinates. In
+practice, this means `extensionLevel` controls not only expressiveness but also node-local storage
+and traversal cost, while `maxFeatures` still determines the feature subspace available to each
+tree.
 
 ### Extended Isolation Forest usage example
 
@@ -360,14 +365,13 @@ from onnxruntime import InferenceSession
 # `onnx_model_path` the same path used above in the convert and save operation
 onnx_model_path = '/user/testuser/isolationForestWriteTest.onnx'
 dataset_path = 'isolation-forest-onnx/test/resources/shuttle.csv'
-dataset_name = 'shuttle'
 num_examples_to_print = 10
 
 # Load data
 input_data = np.loadtxt(dataset_path, delimiter=',')
 num_features = input_data.shape[1] - 1
 last_col_index = num_features
-print(f'Number of features for {dataset_name}: {num_features}')
+print(f'Number of features: {num_features}')
 
 # The last column is the label column
 input_dict = {'features': np.delete(input_data, last_col_index, 1).astype(dtype=np.float32)}
@@ -405,7 +409,7 @@ extension level, not standard IF.
 | [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 9 | StandardIF | 0.9864 &plusmn; 0.0003 | 0.9684 &plusmn; 0.0008 | 0.99 | 0.9873 &plusmn; 0.0005 | 0.9704 &plusmn; 0.0016 |
 | | | ExtendedIF_0 | 0.9878 &plusmn; 0.0003 | 0.9726 &plusmn; 0.0008 | | | |
 | | | ExtendedIF_max | 0.9835 &plusmn; 0.0004 | 0.9568 &plusmn; 0.0015 | | 0.9841 &plusmn; 0.0006 | 0.9593 &plusmn; 0.0021 |
-| [Cardio](http://odds.cs.stonybrook.edu/cardiotocogrpahy-dataset/) | 21 | StandardIF | 0.9276 &plusmn; 0.0022 | 0.5646 &plusmn; 0.0084 | - | 0.9175 &plusmn; 0.0034 | 0.5463 &plusmn; 0.0128 |
+| [Cardio](http://odds.cs.stonybrook.edu/cardiotocography-dataset/) | 21 | StandardIF | 0.9276 &plusmn; 0.0022 | 0.5646 &plusmn; 0.0084 | - | 0.9175 &plusmn; 0.0034 | 0.5463 &plusmn; 0.0128 |
 | | | ExtendedIF_0 | 0.9213 &plusmn; 0.0023 | 0.5528 &plusmn; 0.0089 | | | |
 | | | ExtendedIF_max | 0.9325 &plusmn; 0.0020 | 0.5412 &plusmn; 0.0061 | | 0.9308 &plusmn; 0.0024 | 0.5470 &plusmn; 0.0089 |
 | [ForestCover](http://odds.cs.stonybrook.edu/forestcovercovertype-dataset/) | 10 | StandardIF | 0.8823 &plusmn; 0.0061 | 0.0508 &plusmn; 0.0028 | 0.88 | 0.8724 &plusmn; 0.0100 | 0.0487 &plusmn; 0.0040 |
@@ -439,8 +443,8 @@ extension level, not standard IF.
 **Key observations:**
 
 * **StandardIF** results are in excellent agreement with the original Liu et al. paper.
-* **ExtendedIF_max closely matches the reference Python EIF implementation** across all 13
-  datasets (all within ~2&sigma;), validating the implementation.
+* **ExtendedIF_max closely matches the reference Python EIF implementation** across the 13
+  benchmark datasets, with differences generally within a couple of standard errors.
 * **EIF shines on higher-dimensional data:** ionosphere (AUROC 0.907 vs 0.844 for standard IF),
   satellite (0.725 vs 0.717), cardio (0.933 vs 0.928), and arrhythmia (0.810 vs 0.806).
 * **EIF underperforms on low-dimensional data in our benchmarks** (cover 10D, http 3D, smtp 3D,

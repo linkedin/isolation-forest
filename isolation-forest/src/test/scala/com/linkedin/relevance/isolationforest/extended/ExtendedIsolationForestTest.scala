@@ -371,4 +371,31 @@ class ExtendedIsolationForestTest {
 
     spark.stop()
   }
+
+  @Test(
+    description = "extendedIsolationForestNumSamplesOneThrowsTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def extendedIsolationForestNumSamplesOneThrowsTest(): Unit = {
+
+    val spark = getSparkSession
+
+    val data = loadMammographyData(spark)
+
+    val extendedIsolationForest = new ExtendedIsolationForest()
+      .setNumEstimators(10)
+      .setBootstrap(false)
+      .setMaxSamples(1.5)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.0)
+      .setRandomSeed(1)
+
+    try
+      extendedIsolationForest.fit(data)
+    finally
+      spark.stop()
+  }
 }

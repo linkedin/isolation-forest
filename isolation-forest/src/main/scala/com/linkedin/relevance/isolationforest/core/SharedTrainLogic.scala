@@ -63,9 +63,9 @@ private[isolationforest] object SharedTrainLogic extends Logging {
         s" samples: ${numSamples} / ${totalNumSamples}",
     )
     require(
-      numSamples > 0,
+      numSamples >= 2,
       s"parameter maxSamples given invalid value ${maxSamples}" +
-        s" specifying the use of ${numSamples} samples, but >0 samples are required.",
+        s" specifying the use of ${numSamples} samples, but >=2 samples are required.",
     )
     require(
       numSamples <= totalNumSamples,

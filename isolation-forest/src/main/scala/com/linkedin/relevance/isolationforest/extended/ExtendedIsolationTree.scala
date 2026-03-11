@@ -10,6 +10,7 @@ import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
 }
 import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
 import org.apache.spark.internal.Logging
+import org.apache.spark.ml.linalg.Vector
 
 import scala.annotation.tailrec
 import scala.util.Random
@@ -34,6 +35,18 @@ private[isolationforest] class ExtendedIsolationTree(val extendedNode: ExtendedN
    */
   override def calculatePathLength(dataInstance: DataPoint): Float =
     ExtendedIsolationTree.pathLength(dataInstance, extendedNode)
+
+  /**
+   * Returns the path length from the root node of this isolation tree to the node in the tree that
+   * contains a particular Spark vector.
+   *
+   * @param features
+   *   The feature vector for a single data instance.
+   * @return
+   *   The path length to the instance.
+   */
+  def calculatePathLength(features: Vector): Float =
+    ExtendedIsolationTree.pathLength(features, extendedNode)
 }
 
 private[isolationforest] object ExtendedIsolationTree extends Logging {
@@ -92,7 +105,7 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
    *   Array containing the feature column indices used for training this particular tree.
    * @param extensionLevel
    *   "Extension level for the random hyperplane. extensionLevel+1 = number of non-zero
-   *   coordinates. 0 => standard iForest splits, dimensionOfSubspace-1 => fully extended splits"
+   *   coordinates. 0 => axis-aligned EIF splits, dimensionOfSubspace-1 => fully extended splits"
    * @return
    *   The root node of the isolation tree.
    */
@@ -119,7 +132,7 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
      *   Array containing the feature column indices used for training this particular tree.
      * @param extensionLevel
      *   "Extension level for the random hyperplane. extensionLevel+1 = number of non-zero
-     *   coordinates. 0 => standard iForest splits, dimensionOfSubspace-1 => fully extended splits"
+     *   coordinates. 0 => axis-aligned EIF splits, dimensionOfSubspace-1 => fully extended splits"
      * @return
      *   The root node of the isolation tree.
      */
@@ -139,22 +152,31 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
       if (currentTreeHeight >= heightLimit || numInstances <= 1) {
         ExtendedExternalNode(numInstances)
       } else {
-        val numFeatures = data.head.features.length
         val dim = featureIndices.length
         // We allow up to (extensionLevel+1) coordinates to be non-zero
         val nNonZero = math.min(extensionLevel + 1, dim)
 
-        // Build the hyperplane norm vector for the full space
-        val splitVector = Array.fill(numFeatures)(0.0)
-
         // Randomly choose which feature indices become non-zero (in the selected subspace)
         val chosenFeatureIndices = randomState.shuffle((0 until dim).toList).take(nNonZero)
-        chosenFeatureIndices.foreach { i =>
-          splitVector(featureIndices(i)) = randomState.nextGaussian()
+
+        val sparseIndices = new Array[Int](nNonZero)
+        val rawWeights = new Array[Double](nNonZero)
+
+        var i = 0
+        while (i < chosenFeatureIndices.length) {
+          val featureIndexInSubspace = chosenFeatureIndices(i)
+          sparseIndices(i) = featureIndices(featureIndexInSubspace)
+          rawWeights(i) = randomState.nextGaussian()
+          i += 1
         }
 
         // Compute the L2 norm of the vector
-        val squaredSum = splitVector.map(x => x * x).sum
+        var squaredSum = 0.0
+        i = 0
+        while (i < rawWeights.length) {
+          squaredSum += rawWeights(i) * rawWeights(i)
+          i += 1
+        }
         val normValue = math.sqrt(squaredSum)
 
         // Zero-norm vector (astronomically unlikely with Gaussian draws) — emit leaf
@@ -162,16 +184,19 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
           ExtendedExternalNode(numInstances)
         } else {
           // Normalize the vector
-          val normSplitVector = splitVector.map(_ / normValue)
+          val normalizedWeights = new Array[Double](rawWeights.length)
+          i = 0
+          while (i < rawWeights.length) {
+            normalizedWeights(i) = rawWeights(i) / normValue
+            i += 1
+          }
 
           // Sample intercept point p from the per-coordinate ranges.
           // Only coordinates with non-zero weights in the hyperplane matter.
-          val nonZeroFeatureIdxs: Array[Int] = chosenFeatureIndices.map(featureIndices).toArray
-          val p = Array.fill(numFeatures)(0.0)
-
+          var splitOffset = 0.0
           var k = 0
-          while (k < nonZeroFeatureIdxs.length) {
-            val j = nonZeroFeatureIdxs(k)
+          while (k < sparseIndices.length) {
+            val j = sparseIndices(k)
             var mn = Double.PositiveInfinity
             var mx = Double.NegativeInfinity
             var r = 0
@@ -181,19 +206,24 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
               if (v > mx) mx = v
               r += 1
             }
-            p(j) = if (mn == mx) mn else mn + randomState.nextDouble() * (mx - mn)
+            val interceptValue = if (mn == mx) mn else mn + randomState.nextDouble() * (mx - mn)
+            splitOffset += normalizedWeights(k) * interceptValue
             k += 1
           }
 
-          // Offset = n · p
-          var splitOffset = 0.0
-          var t = 0
-          while (t < numFeatures) { splitOffset += normSplitVector(t) * p(t); t += 1 }
+          // Canonicalize storage order for stable persistence and easier debugging.
+          val sortedCoords = sparseIndices
+            .zip(normalizedWeights)
+            .sortBy { case (index, _) => index }
+          val canonicalIndices = sortedCoords.map(_._1)
+          val canonicalWeights = sortedCoords.map(_._2)
+          val splitHyperplane =
+            SplitHyperplane(canonicalIndices, canonicalWeights, splitOffset)
 
           // Partition: reference implementation uses (x - p) · n < 0 for the left branch,
           // which is equivalent to x·n < p·n (= splitOffset).
           val (leftData, rightData) = data.partition { point =>
-            dot(normSplitVector, point) < splitOffset
+            splitHyperplane.dot(point) < splitOffset
           }
 
           // No retry on degenerate splits — matching EIF paper Algorithm 2 and reference
@@ -218,7 +248,7 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
           ExtendedInternalNode(
             leftChild,
             rightChild,
-            SplitHyperplane(normSplitVector, splitOffset),
+            splitHyperplane,
           )
         }
       }
@@ -272,7 +302,7 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
         case ExtendedExternalNode(numInstances) =>
           currentPathLength + Utils.avgPathLength(numInstances)
         case ExtendedInternalNode(left, right, splitHyperplane) =>
-          val dpVal = dot(splitHyperplane.norm, dataInstance)
+          val dpVal = splitHyperplane.dot(dataInstance)
           // Match reference implementation: (x - p) · n < 0 ⇒ x·n < p·n (= offset) goes left.
           if (dpVal < splitHyperplane.offset) {
             pathLengthInternal(dataInstance, left, currentPathLength + 1)
@@ -285,23 +315,37 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
   }
 
   /**
-   * Compute x · n where `splitVector` is the *full-length* normal (zeros in coordinates not used by
-   * this node), matching the reference implementation's test (x - p) · n < 0.
+   * Returns the path length from the root node of an extended isolation tree to the node in the
+   * tree that contains a particular Spark vector.
    *
-   * @param splitVector
-   *   array of length == point.features.length
-   * @param point
-   *   data point (float[] features)
+   * @param features
+   *   A single data point for scoring.
+   * @param extendedNode
+   *   The root node of the tree used to calculate the path length.
    * @return
-   *   dot product
+   *   The path length to the instance.
    */
-  def dot(splitVector: Array[Double], point: DataPoint): Double = {
-    var sum = 0.0
-    var i = 0
-    while (i < splitVector.length) {
-      sum += splitVector(i) * point.features(i)
-      i += 1
-    }
-    sum
+  def pathLength(features: Vector, extendedNode: ExtendedNode): Float = {
+
+    @tailrec
+    def pathLengthInternal(
+      features: Vector,
+      extendedNode: ExtendedNode,
+      currentPathLength: Float,
+    ): Float =
+
+      extendedNode match {
+        case ExtendedExternalNode(numInstances) =>
+          currentPathLength + Utils.avgPathLength(numInstances)
+        case ExtendedInternalNode(left, right, splitHyperplane) =>
+          val dpVal = splitHyperplane.dot(features)
+          if (dpVal < splitHyperplane.offset) {
+            pathLengthInternal(features, left, currentPathLength + 1)
+          } else {
+            pathLengthInternal(features, right, currentPathLength + 1)
+          }
+      }
+
+    pathLengthInternal(features, extendedNode, 0.0f)
   }
 }

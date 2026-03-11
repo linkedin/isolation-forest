@@ -11,6 +11,7 @@ import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
   ExtendedInternalNode,
   ExtendedNode,
 }
+import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
 import org.apache.commons.io.FileUtils.deleteDirectory
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.feature.VectorAssembler
@@ -30,14 +31,35 @@ import java.io.File
  */
 class ExtendedIsolationForestModelWriteReadTest extends Logging {
 
+  private def assertErrorContains(error: Throwable, expectedMessage: String): Unit = {
+    @scala.annotation.tailrec
+    def containsMessage(current: Throwable): Boolean =
+      if (current == null) {
+        false
+      } else if (current.getMessage != null && current.getMessage.contains(expectedMessage)) {
+        true
+      } else {
+        containsMessage(current.getCause)
+      }
+
+    Assert.assertTrue(
+      containsMessage(error),
+      s"Expected an exception containing '$expectedMessage', but observed: ${error}",
+    )
+  }
+
   private def assertTreesEqual(a: ExtendedNode, b: ExtendedNode, eps: Double = 1e-12): Unit =
     (a, b) match {
       case (ExtendedExternalNode(n1), ExtendedExternalNode(n2)) =>
         Assert.assertEquals(n1, n2, "numInstances mismatch")
       case (ExtendedInternalNode(l1, r1, h1), ExtendedInternalNode(l2, r2, h2)) =>
-        Assert.assertEquals(h1.norm.length, h2.norm.length, "norm length mismatch")
-        h1.norm.zip(h2.norm).foreach { case (v1, v2) =>
-          Assert.assertTrue(math.abs(v1 - v2) < eps, s"norm mismatch: $v1 vs $v2")
+        Assert.assertTrue(
+          h1.indices.sameElements(h2.indices),
+          s"indices mismatch: ${h1.indices.mkString(",")} vs ${h2.indices.mkString(",")}",
+        )
+        Assert.assertEquals(h1.weights.length, h2.weights.length, "weights length mismatch")
+        h1.weights.zip(h2.weights).foreach { case (v1, v2) =>
+          Assert.assertTrue(math.abs(v1 - v2) < eps, s"weights mismatch: $v1 vs $v2")
         }
         Assert.assertTrue(
           math.abs(h1.offset - h2.offset) < eps,
@@ -87,6 +109,10 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     )
     Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
     Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
+    Assert.assertEquals(
+      extendedIFModel1.getTotalNumFeatures,
+      extendedIFModel2.getTotalNumFeatures,
+    )
     Assert.assertEquals(
       extendedIFModel1.getOutlierScoreThreshold,
       extendedIFModel2.getOutlierScoreThreshold,
@@ -154,6 +180,10 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     )
     Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
     Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
+    Assert.assertEquals(
+      extendedIFModel1.getTotalNumFeatures,
+      extendedIFModel2.getTotalNumFeatures,
+    )
     Assert.assertEquals(
       extendedIFModel1.getOutlierScoreThreshold,
       extendedIFModel2.getOutlierScoreThreshold,
@@ -254,7 +284,13 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
 
     // Create an extended isolation forest model with no isolation trees
     val extendedIFModel1 =
-      new ExtendedIsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
+      new ExtendedIsolationForestModel(
+        "testUid",
+        Array(),
+        numSamples = 2,
+        numFeatures = 2,
+        totalNumFeatures = 2,
+      )
     extendedIFModel1.setOutlierScoreThreshold(0.5)
 
     // Write the trained model to disk and then read it back from disk
@@ -271,6 +307,10 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     )
     Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
     Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
+    Assert.assertEquals(
+      extendedIFModel1.getTotalNumFeatures,
+      extendedIFModel2.getTotalNumFeatures,
+    )
     Assert.assertEquals(
       extendedIFModel1.getOutlierScoreThreshold,
       extendedIFModel2.getOutlierScoreThreshold,
@@ -294,10 +334,73 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
 
     val data = Seq(Tuple1(Vectors.dense(1.0, 2.0))).toDF("features")
     val emptyModel =
-      new ExtendedIsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
+      new ExtendedIsolationForestModel(
+        "testUid",
+        Array(),
+        numSamples = 2,
+        numFeatures = 2,
+        totalNumFeatures = 2,
+      )
 
     try
       emptyModel.transform(data)
+    finally
+      spark.stop()
+  }
+
+  @Test(
+    description = "extendedIsolationForestModelNumSamplesOneTransformThrowsTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def extendedIsolationForestModelNumSamplesOneTransformThrowsTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = Seq(Tuple1(Vectors.dense(1.0, 2.0))).toDF("features")
+    val invalidModel = new ExtendedIsolationForestModel(
+      "testUid",
+      Array(new ExtendedIsolationTree(ExtendedExternalNode(2))),
+      numSamples = 1,
+      numFeatures = 2,
+      totalNumFeatures = 2,
+    )
+
+    try
+      invalidModel.transform(data)
+    finally
+      spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestModelFeatureDimensionValidationTest")
+  def extendedIsolationForestModelFeatureDimensionValidationTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val validModel = new ExtendedIsolationForestModel(
+      "testUid",
+      Array(new ExtendedIsolationTree(ExtendedExternalNode(2))),
+      numSamples = 2,
+      numFeatures = 2,
+      totalNumFeatures = 2,
+    )
+
+    try
+      Seq(
+        Vectors.dense(1.0),
+        Vectors.dense(1.0, 2.0, 3.0),
+      ).foreach { invalidVector =>
+        try {
+          validModel.transform(Seq(Tuple1(invalidVector)).toDF("features")).collect()
+          Assert.fail(s"Expected feature-dimension validation to fail for $invalidVector.")
+        } catch {
+          case error: Exception =>
+            assertErrorContains(error, "did not match the model's training dimension 2")
+        }
+      }
     finally
       spark.stop()
   }
@@ -312,7 +415,7 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     val zeroLeaf = ExtendedExternalNode(0)
     val normalLeaf = ExtendedExternalNode(5)
     val splitHyperplane =
-      ExtendedUtils.SplitHyperplane(Array(0.7071067812, 0.7071067812), 1.5)
+      SplitHyperplane(Array(0, 1), Array(0.7071067812, 0.7071067812), 1.5)
     val root = ExtendedInternalNode(zeroLeaf, normalLeaf, splitHyperplane)
     val tree = new ExtendedIsolationTree(root)
 
@@ -322,6 +425,7 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
         Array(tree),
         numSamples = 5,
         numFeatures = 2,
+        totalNumFeatures = 2,
       )
     extendedIFModel1.setOutlierScoreThreshold(0.5)
 
@@ -335,6 +439,10 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     // Assert model params survived
     Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
     Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
+    Assert.assertEquals(
+      extendedIFModel1.getTotalNumFeatures,
+      extendedIFModel2.getTotalNumFeatures,
+    )
     Assert.assertEquals(
       extendedIFModel1.getOutlierScoreThreshold,
       extendedIFModel2.getOutlierScoreThreshold,

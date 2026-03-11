@@ -16,8 +16,27 @@ import org.testng.Assert
 import org.testng.annotations.Test
 
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 
 class IsolationForestModelWriteReadTest extends Logging {
+
+  private def assertErrorContains(error: Throwable, expectedMessage: String): Unit = {
+    @scala.annotation.tailrec
+    def containsMessage(current: Throwable): Boolean =
+      if (current == null) {
+        false
+      } else if (current.getMessage != null && current.getMessage.contains(expectedMessage)) {
+        true
+      } else {
+        containsMessage(current.getCause)
+      }
+
+    Assert.assertTrue(
+      containsMessage(error),
+      s"Expected an exception containing '$expectedMessage', but observed: ${error}",
+    )
+  }
 
   @Test(description = "isolationForestModelWriteReadTest")
   def isolationForestModelWriteReadTest(): Unit = {
@@ -55,6 +74,10 @@ class IsolationForestModelWriteReadTest extends Logging {
     )
     Assert.assertEquals(isolationForestModel1.getNumSamples, isolationForestModel2.getNumSamples)
     Assert.assertEquals(isolationForestModel1.getNumFeatures, isolationForestModel2.getNumFeatures)
+    Assert.assertEquals(
+      isolationForestModel1.getTotalNumFeatures,
+      isolationForestModel2.getTotalNumFeatures,
+    )
     Assert.assertEquals(
       isolationForestModel1.getOutlierScoreThreshold,
       isolationForestModel2.getOutlierScoreThreshold,
@@ -123,6 +146,10 @@ class IsolationForestModelWriteReadTest extends Logging {
     )
     Assert.assertEquals(isolationForestModel1.getNumSamples, isolationForestModel2.getNumSamples)
     Assert.assertEquals(isolationForestModel1.getNumFeatures, isolationForestModel2.getNumFeatures)
+    Assert.assertEquals(
+      isolationForestModel1.getTotalNumFeatures,
+      isolationForestModel2.getTotalNumFeatures,
+    )
     Assert.assertEquals(
       isolationForestModel1.getOutlierScoreThreshold,
       isolationForestModel2.getOutlierScoreThreshold,
@@ -228,7 +255,13 @@ class IsolationForestModelWriteReadTest extends Logging {
 
     // Create an isolation forest model with no isolation trees
     val isolationForestModel1 =
-      new IsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
+      new IsolationForestModel(
+        "testUid",
+        Array(),
+        numSamples = 2,
+        numFeatures = 2,
+        totalNumFeatures = 2,
+      )
     isolationForestModel1.setOutlierScoreThreshold(0.5)
 
     // Write the trained model to disk and then read it back from disk
@@ -244,6 +277,10 @@ class IsolationForestModelWriteReadTest extends Logging {
     )
     Assert.assertEquals(isolationForestModel1.getNumSamples, isolationForestModel2.getNumSamples)
     Assert.assertEquals(isolationForestModel1.getNumFeatures, isolationForestModel2.getNumFeatures)
+    Assert.assertEquals(
+      isolationForestModel1.getTotalNumFeatures,
+      isolationForestModel2.getTotalNumFeatures,
+    )
     Assert.assertEquals(
       isolationForestModel1.getOutlierScoreThreshold,
       isolationForestModel2.getOutlierScoreThreshold,
@@ -266,12 +303,89 @@ class IsolationForestModelWriteReadTest extends Logging {
     import spark.implicits._
 
     val data = Seq(Tuple1(Vectors.dense(1.0, 2.0))).toDF("features")
-    val emptyModel = new IsolationForestModel("testUid", Array(), numSamples = 1, numFeatures = 2)
+    val emptyModel =
+      new IsolationForestModel(
+        "testUid",
+        Array(),
+        numSamples = 2,
+        numFeatures = 2,
+        totalNumFeatures = 2,
+      )
 
     try
       emptyModel.transform(data)
     finally
       spark.stop()
+  }
+
+  @Test(
+    description = "isolationForestModelNumSamplesOneTransformThrowsTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def isolationForestModelNumSamplesOneTransformThrowsTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = Seq(Tuple1(Vectors.dense(1.0, 2.0))).toDF("features")
+    val invalidModel = new IsolationForestModel(
+      "testUid",
+      Array(new IsolationTree(ExternalNode(2))),
+      numSamples = 1,
+      numFeatures = 2,
+      totalNumFeatures = 2,
+    )
+
+    try
+      invalidModel.transform(data)
+    finally
+      spark.stop()
+  }
+
+  @Test(description = "isolationForestModelFeatureDimensionValidationTest")
+  def isolationForestModelFeatureDimensionValidationTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val validModel = new IsolationForestModel(
+      "testUid",
+      Array(new IsolationTree(ExternalNode(2))),
+      numSamples = 2,
+      numFeatures = 2,
+      totalNumFeatures = 2,
+    )
+
+    try
+      Seq(
+        Vectors.dense(1.0),
+        Vectors.dense(1.0, 2.0, 3.0),
+      ).foreach { invalidVector =>
+        try {
+          validModel.transform(Seq(Tuple1(invalidVector)).toDF("features")).collect()
+          Assert.fail(s"Expected feature-dimension validation to fail for $invalidVector.")
+        } catch {
+          case error: Exception =>
+            assertErrorContains(error, "did not match the model's training dimension 2")
+        }
+      }
+    finally
+      spark.stop()
+  }
+
+  @Test(description = "legacyIsolationForestModelConstructorUsesUnknownTotalNumFeaturesTest")
+  def legacyIsolationForestModelConstructorUsesUnknownTotalNumFeaturesTest(): Unit = {
+
+    val legacyModel =
+      new IsolationForestModel("testUid", Array(new IsolationTree(ExternalNode(2))), 2, 2)
+
+    Assert.assertFalse(legacyModel.hasKnownTotalNumFeatures)
+    Assert.assertEquals(
+      legacyModel.getTotalNumFeatures,
+      IsolationForestModel.UnknownTotalNumFeatures,
+    )
   }
 
   @Test(description = "savedIsolationForestModelTreeStructureTest")
@@ -291,5 +405,57 @@ class IsolationForestModelWriteReadTest extends Logging {
     Assert.assertEquals(observedTreeStructure, expectedTreeStructure)
 
     spark.stop()
+  }
+
+  @Test(description = "legacyIsolationForestModelWithoutTotalNumFeaturesLoadsTest")
+  def legacyIsolationForestModelWithoutTotalNumFeaturesLoadsTest(): Unit = {
+
+    val spark = getSparkSession
+    val data = loadMammographyData(spark)
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/savedIsolationForestModelLegacyMetadata"
+    val legacyModelDir = new File(savePath)
+
+    try {
+      val isolationForest = new IsolationForest()
+        .setNumEstimators(20)
+        .setBootstrap(false)
+        .setMaxSamples(256)
+        .setMaxFeatures(0.5)
+        .setFeaturesCol("features")
+        .setPredictionCol("predictedLabel")
+        .setScoreCol("outlierScore")
+        .setContamination(0.02)
+        .setRandomSeed(1)
+
+      val isolationForestModel = isolationForest.fit(data)
+      Assert.assertTrue(
+        isolationForestModel.getNumFeatures < isolationForestModel.getTotalNumFeatures,
+      )
+      isolationForestModel.write.overwrite().save(savePath)
+
+      val metadataPath = new File(legacyModelDir, "metadata/part-00000").toPath
+      val currentMetadata = new String(Files.readAllBytes(metadataPath), StandardCharsets.UTF_8)
+      val legacyMetadata = currentMetadata.replaceFirst(",\"totalNumFeatures\":\\d+", "")
+      Files.write(metadataPath, legacyMetadata.getBytes(StandardCharsets.UTF_8))
+      new File(legacyModelDir, "metadata").listFiles().foreach { file =>
+        if (file.getName.startsWith(".")) {
+          file.delete()
+        }
+      }
+
+      val legacyIsolationForestModel = IsolationForestModel.load(legacyModelDir.getPath)
+      Assert.assertFalse(legacyIsolationForestModel.hasKnownTotalNumFeatures)
+      Assert.assertEquals(
+        legacyIsolationForestModel.getTotalNumFeatures,
+        IsolationForestModel.UnknownTotalNumFeatures,
+      )
+      Assert.assertEquals(legacyIsolationForestModel.transform(data).count(), data.count())
+    } finally {
+      if (legacyModelDir.exists()) {
+        deleteDirectory(legacyModelDir)
+      }
+      spark.stop()
+    }
   }
 }

@@ -220,7 +220,8 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
       val extraMetadata: JObject =
         ("outlierScoreThreshold", model.getOutlierScoreThreshold) ~
           ("numSamples", model.getNumSamples) ~
-          ("numFeatures", model.getNumFeatures)
+          ("numFeatures", model.getNumFeatures) ~
+          ("totalNumFeatures", model.getTotalNumFeatures)
       saveImplHelper(path, sparkSession, extraMetadata)
     }
 
@@ -294,6 +295,15 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
       val metadata = loadMetadata(path, sparkSession, expectedClassName)
       val numSamples = (metadata.metadata \ "numSamples").extract[Int]
       val numFeatures = (metadata.metadata \ "numFeatures").extract[Int]
+      val totalNumFeatures = (metadata.metadata \ "totalNumFeatures")
+        .extractOpt[Int]
+        .getOrElse {
+          logWarning(
+            s"Loading legacy IsolationForestModel from $path without totalNumFeatures metadata; " +
+              "feature-dimension validation will be unavailable for this model.",
+          )
+          IsolationForestModel.UnknownTotalNumFeatures
+        }
       val threshold = (metadata.metadata \ "outlierScoreThreshold").extract[Double]
 
       val rootNodes = loadTrees(path, sparkSession, buildTreeFromNodes)
@@ -304,7 +314,8 @@ private[isolationforest] case object IsolationForestModelReadWrite extends Loggi
           new IsolationTree(externalNode.asInstanceOf[ExternalNode])
       }
 
-      val model = new IsolationForestModel(metadata.uid, trees, numSamples, numFeatures)
+      val model =
+        new IsolationForestModel(metadata.uid, trees, numSamples, numFeatures, totalNumFeatures)
       metadata.setParams(model)
       model.setOutlierScoreThreshold(threshold)
 
