@@ -4,8 +4,9 @@ import com.linkedin.relevance.isolationforest.core.SharedTrainLogic.{
   computeAndSetModelThreshold,
   createSampledPartitionedDataset,
   trainIsolationTrees,
+  validateAndResolveParams,
 }
-import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, ResolvedParams}
+import com.linkedin.relevance.isolationforest.core.Utils.DataPoint
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.Estimator
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
@@ -50,7 +51,7 @@ class ExtendedIsolationForest(override val uid: String)
 
     // Validate $(maxFeatures) and $(maxSamples) against input dataset and determine the values
     // actually used to train the model: numFeatures and numSamples
-    val resolvedParams = validateAndResolveParams(dataset)
+    val resolvedParams = validateAndResolveParams(dataset, $(maxFeatures), $(maxSamples))
 
     // Resolve the effective extension level: default to fully extended if not explicitly set,
     // otherwise validate the user-specified value against the resolved feature subspace dimension.
@@ -152,64 +153,6 @@ class ExtendedIsolationForest(override val uid: String)
     StructType(outputFields)
   }
 
-  /**
-   * Private helper to validate parameters and figure out how many features and samples we'll use.
-   *
-   * @param dataset
-   *   The input dataset.
-   * @return
-   *   A ResolvedParams instance containing the resolved values.
-   */
-  private def validateAndResolveParams(dataset: Dataset[DataPoint]): ResolvedParams = {
-
-    // Validate $(maxFeatures) and $(maxSamples) against input dataset and determine the values
-    // actually used to train the model: numFeatures and numSamples.
-    val totalNumFeatures = dataset.head().features.length
-    val numFeatures = if ($(maxFeatures) > 1.0) {
-      math.floor($(maxFeatures)).toInt
-    } else {
-      math.floor($(maxFeatures) * totalNumFeatures).toInt
-    }
-    logInfo(
-      s"User specified number of features used to train each tree over total number of" +
-        s" features: ${numFeatures} / ${totalNumFeatures}",
-    )
-    require(
-      numFeatures > 0,
-      s"parameter maxFeatures given invalid value ${$(maxFeatures)}" +
-        s" specifying the use of ${numFeatures} features, but >0 features are required.",
-    )
-    require(
-      numFeatures <= totalNumFeatures,
-      s"parameter maxFeatures given invalid value" +
-        s" ${$(maxFeatures)} specifying the use of ${numFeatures} features, but only" +
-        s" ${totalNumFeatures} features are available.",
-    )
-
-    val totalNumSamples = dataset.count()
-    val numSamples = if ($(maxSamples) > 1.0) {
-      math.floor($(maxSamples)).toInt
-    } else {
-      math.floor($(maxSamples) * totalNumSamples).toInt
-    }
-    logInfo(
-      s"User specified number of samples used to train each tree over total number of" +
-        s" samples: ${numSamples} / ${totalNumSamples}",
-    )
-    require(
-      numSamples > 0,
-      s"parameter maxSamples given invalid value ${$(maxSamples)}" +
-        s" specifying the use of ${numSamples} samples, but >0 samples are required.",
-    )
-    require(
-      numSamples <= totalNumSamples,
-      s"parameter maxSamples given invalid value" +
-        s" ${$(maxSamples)} specifying the use of ${numSamples} samples, but only" +
-        s" ${totalNumSamples} samples are in the input dataset.",
-    )
-
-    ResolvedParams(numFeatures, totalNumFeatures, numSamples, totalNumSamples)
-  }
 }
 
 /**
