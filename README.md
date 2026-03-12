@@ -400,45 +400,45 @@ extension level, not standard IF.
 
 | Dataset | Dim | Model | AUROC | AUPRC | Liu&nbsp;et&nbsp;al.&nbsp;AUROC&nbsp;(IF) | Ref.&nbsp;Python&nbsp;AUROC&nbsp;(EIF) | Ref.&nbsp;Python&nbsp;AUPRC&nbsp;(EIF) |
 |---|--:|---|---|---|--:|---|---|
-| [Annthyroid](http://odds.cs.stonybrook.edu/annthyroid-dataset/) | 6 | StandardIF | 0.813 &plusmn; 0.004 | 0.312 &plusmn; 0.004 | 0.82 | | |
-| | | ExtendedIF_0 | 0.813 &plusmn; 0.004 | 0.307 &plusmn; 0.004 | | 0.822 &plusmn; 0.004 | 0.314 &plusmn; 0.007 |
-| | | ExtendedIF_max | 0.646 &plusmn; 0.002 | 0.1791 &plusmn; 0.0017 | | 0.651 &plusmn; 0.003 | 0.183 &plusmn; 0.005 |
-| [Arrhythmia](http://odds.cs.stonybrook.edu/arrhythmia-dataset/) | 274 | StandardIF | 0.8064 &plusmn; 0.0019 | 0.494 &plusmn; 0.006 | 0.80 | | |
-| | | ExtendedIF_0 | 0.802 &plusmn; 0.002 | 0.478 &plusmn; 0.004 | | 0.796 &plusmn; 0.004 | 0.462 &plusmn; 0.005 |
-| | | ExtendedIF_max | 0.810 &plusmn; 0.004 | 0.495 &plusmn; 0.005 | | 0.803 &plusmn; 0.003 | 0.490 &plusmn; 0.004 |
-| [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 9 | StandardIF | 0.9864 &plusmn; 0.0003 | 0.9684 &plusmn; 0.0008 | 0.99 | | |
-| | | ExtendedIF_0 | 0.9878 &plusmn; 0.0003 | 0.9726 &plusmn; 0.0008 | | 0.9873 &plusmn; 0.0005 | 0.9704 &plusmn; 0.0016 |
-| | | ExtendedIF_max | 0.9835 &plusmn; 0.0004 | 0.9568 &plusmn; 0.0015 | | 0.9841 &plusmn; 0.0006 | 0.959 &plusmn; 0.002 |
-| [Cardio](http://odds.cs.stonybrook.edu/cardiotocography-dataset/) | 21 | StandardIF | 0.928 &plusmn; 0.002 | 0.565 &plusmn; 0.008 | - | | |
-| | | ExtendedIF_0 | 0.921 &plusmn; 0.002 | 0.553 &plusmn; 0.009 | | 0.918 &plusmn; 0.003 | 0.546 &plusmn; 0.013 |
-| | | ExtendedIF_max | 0.933 &plusmn; 0.002 | 0.541 &plusmn; 0.006 | | 0.931 &plusmn; 0.002 | 0.547 &plusmn; 0.009 |
-| [ForestCover](http://odds.cs.stonybrook.edu/forestcovercovertype-dataset/) | 10 | StandardIF | 0.882 &plusmn; 0.006 | 0.051 &plusmn; 0.003 | 0.88 | | |
-| | | ExtendedIF_0 | 0.865 &plusmn; 0.008 | 0.050 &plusmn; 0.005 | | 0.872 &plusmn; 0.010 | 0.049 &plusmn; 0.004 |
-| | | ExtendedIF_max | 0.688 &plusmn; 0.008 | 0.0138 &plusmn; 0.0003 | | 0.662 &plusmn; 0.009 | 0.0129 &plusmn; 0.0004 |
-| [Http (KDDCUP99)](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/) | 3 | StandardIF | 0.99970 &plusmn; 0.00010 | 0.93 &plusmn; 0.02 | 1.00 | | |
-| | | ExtendedIF_0 | 0.99410 &plusmn; 0.00010 | 0.392 &plusmn; 0.004 | | 0.99390 &plusmn; 0.00010 | 0.379 &plusmn; 0.004 |
-| | | ExtendedIF_max | 0.99410 &plusmn; 0.00010 | 0.379 &plusmn; 0.006 | | 0.9939 &plusmn; 0.0003 | 0.371 &plusmn; 0.009 |
-| [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/) | 33 | StandardIF | 0.8443 &plusmn; 0.0002 | 0.8014 &plusmn; 0.0003 | 0.85 | | |
-| | | ExtendedIF_0 | 0.8568 &plusmn; 0.0006 | 0.8108 &plusmn; 0.0007 | | 0.8556 &plusmn; 0.0016 | 0.808 &plusmn; 0.002 |
-| | | ExtendedIF_max | 0.9075 &plusmn; 0.0002 | 0.8804 &plusmn; 0.0002 | | 0.9061 &plusmn; 0.0014 | 0.876 &plusmn; 0.002 |
-| [Mammography](http://odds.cs.stonybrook.edu/mammography-dataset/) | 6 | StandardIF | 0.8649 &plusmn; 0.0015 | 0.218 &plusmn; 0.007 | 0.86 | | |
-| | | ExtendedIF_0 | 0.865 &plusmn; 0.002 | 0.220 &plusmn; 0.006 | | 0.868 &plusmn; 0.002 | 0.229 &plusmn; 0.013 |
-| | | ExtendedIF_max | 0.8630 &plusmn; 0.0010 | 0.190 &plusmn; 0.003 | | 0.8639 &plusmn; 0.0016 | 0.184 &plusmn; 0.004 |
-| [Mulcross](https://www.openml.org/d/40897) | 4 | StandardIF | 0.9910 &plusmn; 0.0009 | 0.852 &plusmn; 0.014 | 0.97 | | |
-| | | ExtendedIF_0 | 0.938 &plusmn; 0.002 | 0.428 &plusmn; 0.009 | | 0.960 &plusmn; 0.003 | 0.538 &plusmn; 0.017 |
-| | | ExtendedIF_max | 0.940 &plusmn; 0.003 | 0.442 &plusmn; 0.011 | | 0.941 &plusmn; 0.005 | 0.45 &plusmn; 0.02 |
-| [Pima](http://odds.cs.stonybrook.edu/pima-indians-diabetes-dataset/) | 8 | StandardIF | 0.668 &plusmn; 0.004 | 0.490 &plusmn; 0.003 | 0.67 | | |
-| | | ExtendedIF_0 | 0.667 &plusmn; 0.004 | 0.507 &plusmn; 0.004 | | 0.675 &plusmn; 0.005 | 0.514 &plusmn; 0.005 |
-| | | ExtendedIF_max | 0.644 &plusmn; 0.003 | 0.498 &plusmn; 0.002 | | 0.640 &plusmn; 0.004 | 0.493 &plusmn; 0.004 |
-| [Satellite](http://odds.cs.stonybrook.edu/satellite-dataset/) | 36 | StandardIF | 0.717 &plusmn; 0.008 | 0.672 &plusmn; 0.008 | 0.71 | | |
-| | | ExtendedIF_0 | 0.715 &plusmn; 0.004 | 0.675 &plusmn; 0.003 | | 0.700 &plusmn; 0.004 | 0.664 &plusmn; 0.006 |
-| | | ExtendedIF_max | 0.725 &plusmn; 0.003 | 0.704 &plusmn; 0.004 | | 0.740 &plusmn; 0.005 | 0.711 &plusmn; 0.005 |
-| [Shuttle](http://odds.cs.stonybrook.edu/shuttle-dataset/) | 9 | StandardIF | 0.9971 &plusmn; 0.0002 | 0.9742 &plusmn; 0.0017 | 1.00 | | |
-| | | ExtendedIF_0 | 0.9974 &plusmn; 0.0002 | 0.9789 &plusmn; 0.0014 | | 0.99750 &plusmn; 0.00010 | 0.9805 &plusmn; 0.0010 |
-| | | ExtendedIF_max | 0.9934 &plusmn; 0.0002 | 0.822 &plusmn; 0.004 | | 0.9932 &plusmn; 0.0002 | 0.818 &plusmn; 0.003 |
-| [Smtp (KDDCUP99)](http://odds.cs.stonybrook.edu/smtp-kddcup99-dataset/) | 3 | StandardIF | 0.9099 &plusmn; 0.0014 | 0.00450 &plusmn; 0.00010 | 0.88 | | |
-| | | ExtendedIF_0 | 0.896 &plusmn; 0.002 | 0.00400 &plusmn; 0.00010 | | 0.897 &plusmn; 0.002 | 0.00410 &plusmn; 0.00010 |
-| | | ExtendedIF_max | 0.858 &plusmn; 0.003 | 0.0098 &plusmn; 0.0011 | | 0.857 &plusmn; 0.003 | 0.014 &plusmn; 0.003 |
+| [Annthyroid](http://odds.cs.stonybrook.edu/annthyroid-dataset/) | 6 | StandardIF | 0.813&nbsp;&plusmn;&nbsp;0.004 | 0.312&nbsp;&plusmn;&nbsp;0.004 | 0.82 | - | - |
+| | | ExtendedIF_0 | 0.813&nbsp;&plusmn;&nbsp;0.004 | 0.307&nbsp;&plusmn;&nbsp;0.004 | - | 0.822&nbsp;&plusmn;&nbsp;0.004 | 0.314&nbsp;&plusmn;&nbsp;0.007 |
+| | | ExtendedIF_max | 0.646&nbsp;&plusmn;&nbsp;0.002 | 0.1791&nbsp;&plusmn;&nbsp;0.0017 | - | 0.651&nbsp;&plusmn;&nbsp;0.003 | 0.183&nbsp;&plusmn;&nbsp;0.005 |
+| [Arrhythmia](http://odds.cs.stonybrook.edu/arrhythmia-dataset/) | 274 | StandardIF | 0.8064&nbsp;&plusmn;&nbsp;0.0019 | 0.494&nbsp;&plusmn;&nbsp;0.006 | 0.80 | - | - |
+| | | ExtendedIF_0 | 0.802&nbsp;&plusmn;&nbsp;0.002 | 0.478&nbsp;&plusmn;&nbsp;0.004 | - | 0.796&nbsp;&plusmn;&nbsp;0.004 | 0.462&nbsp;&plusmn;&nbsp;0.005 |
+| | | ExtendedIF_max | 0.810&nbsp;&plusmn;&nbsp;0.004 | 0.495&nbsp;&plusmn;&nbsp;0.005 | - | 0.803&nbsp;&plusmn;&nbsp;0.003 | 0.490&nbsp;&plusmn;&nbsp;0.004 |
+| [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 9 | StandardIF | 0.9864&nbsp;&plusmn;&nbsp;0.0003 | 0.9684&nbsp;&plusmn;&nbsp;0.0008 | 0.99 | - | - |
+| | | ExtendedIF_0 | 0.9878&nbsp;&plusmn;&nbsp;0.0003 | 0.9726&nbsp;&plusmn;&nbsp;0.0008 | - | 0.9873&nbsp;&plusmn;&nbsp;0.0005 | 0.9704&nbsp;&plusmn;&nbsp;0.0016 |
+| | | ExtendedIF_max | 0.9835&nbsp;&plusmn;&nbsp;0.0004 | 0.9568&nbsp;&plusmn;&nbsp;0.0015 | - | 0.9841&nbsp;&plusmn;&nbsp;0.0006 | 0.959&nbsp;&plusmn;&nbsp;0.002 |
+| [Cardio](http://odds.cs.stonybrook.edu/cardiotocography-dataset/) | 21 | StandardIF | 0.928&nbsp;&plusmn;&nbsp;0.002 | 0.565&nbsp;&plusmn;&nbsp;0.008 | - | - | - |
+| | | ExtendedIF_0 | 0.921&nbsp;&plusmn;&nbsp;0.002 | 0.553&nbsp;&plusmn;&nbsp;0.009 | - | 0.918&nbsp;&plusmn;&nbsp;0.003 | 0.546&nbsp;&plusmn;&nbsp;0.013 |
+| | | ExtendedIF_max | 0.933&nbsp;&plusmn;&nbsp;0.002 | 0.541&nbsp;&plusmn;&nbsp;0.006 | - | 0.931&nbsp;&plusmn;&nbsp;0.002 | 0.547&nbsp;&plusmn;&nbsp;0.009 |
+| [ForestCover](http://odds.cs.stonybrook.edu/forestcovercovertype-dataset/) | 10 | StandardIF | 0.882&nbsp;&plusmn;&nbsp;0.006 | 0.051&nbsp;&plusmn;&nbsp;0.003 | 0.88 | - | - |
+| | | ExtendedIF_0 | 0.865&nbsp;&plusmn;&nbsp;0.008 | 0.050&nbsp;&plusmn;&nbsp;0.005 | - | 0.872&nbsp;&plusmn;&nbsp;0.010 | 0.049&nbsp;&plusmn;&nbsp;0.004 |
+| | | ExtendedIF_max | 0.688&nbsp;&plusmn;&nbsp;0.008 | 0.0138&nbsp;&plusmn;&nbsp;0.0003 | - | 0.662&nbsp;&plusmn;&nbsp;0.009 | 0.0129&nbsp;&plusmn;&nbsp;0.0004 |
+| [Http (KDDCUP99)](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/) | 3 | StandardIF | 0.99970&nbsp;&plusmn;&nbsp;0.00010 | 0.93&nbsp;&plusmn;&nbsp;0.02 | 1.00 | - | - |
+| | | ExtendedIF_0 | 0.99410&nbsp;&plusmn;&nbsp;0.00010 | 0.392&nbsp;&plusmn;&nbsp;0.004 | - | 0.99390&nbsp;&plusmn;&nbsp;0.00010 | 0.379&nbsp;&plusmn;&nbsp;0.004 |
+| | | ExtendedIF_max | 0.99410&nbsp;&plusmn;&nbsp;0.00010 | 0.379&nbsp;&plusmn;&nbsp;0.006 | - | 0.9939&nbsp;&plusmn;&nbsp;0.0003 | 0.371&nbsp;&plusmn;&nbsp;0.009 |
+| [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/) | 33 | StandardIF | 0.8443&nbsp;&plusmn;&nbsp;0.0002 | 0.8014&nbsp;&plusmn;&nbsp;0.0003 | 0.85 | - | - |
+| | | ExtendedIF_0 | 0.8568&nbsp;&plusmn;&nbsp;0.0006 | 0.8108&nbsp;&plusmn;&nbsp;0.0007 | - | 0.8556&nbsp;&plusmn;&nbsp;0.0016 | 0.808&nbsp;&plusmn;&nbsp;0.002 |
+| | | ExtendedIF_max | 0.9075&nbsp;&plusmn;&nbsp;0.0002 | 0.8804&nbsp;&plusmn;&nbsp;0.0002 | - | 0.9061&nbsp;&plusmn;&nbsp;0.0014 | 0.876&nbsp;&plusmn;&nbsp;0.002 |
+| [Mammography](http://odds.cs.stonybrook.edu/mammography-dataset/) | 6 | StandardIF | 0.8649&nbsp;&plusmn;&nbsp;0.0015 | 0.218&nbsp;&plusmn;&nbsp;0.007 | 0.86 | - | - |
+| | | ExtendedIF_0 | 0.865&nbsp;&plusmn;&nbsp;0.002 | 0.220&nbsp;&plusmn;&nbsp;0.006 | - | 0.868&nbsp;&plusmn;&nbsp;0.002 | 0.229&nbsp;&plusmn;&nbsp;0.013 |
+| | | ExtendedIF_max | 0.8630&nbsp;&plusmn;&nbsp;0.0010 | 0.190&nbsp;&plusmn;&nbsp;0.003 | - | 0.8639&nbsp;&plusmn;&nbsp;0.0016 | 0.184&nbsp;&plusmn;&nbsp;0.004 |
+| [Mulcross](https://www.openml.org/d/40897) | 4 | StandardIF | 0.9910&nbsp;&plusmn;&nbsp;0.0009 | 0.852&nbsp;&plusmn;&nbsp;0.014 | 0.97 | - | - |
+| | | ExtendedIF_0 | 0.938&nbsp;&plusmn;&nbsp;0.002 | 0.428&nbsp;&plusmn;&nbsp;0.009 | - | 0.960&nbsp;&plusmn;&nbsp;0.003 | 0.538&nbsp;&plusmn;&nbsp;0.017 |
+| | | ExtendedIF_max | 0.940&nbsp;&plusmn;&nbsp;0.003 | 0.442&nbsp;&plusmn;&nbsp;0.011 | - | 0.941&nbsp;&plusmn;&nbsp;0.005 | 0.45&nbsp;&plusmn;&nbsp;0.02 |
+| [Pima](http://odds.cs.stonybrook.edu/pima-indians-diabetes-dataset/) | 8 | StandardIF | 0.668&nbsp;&plusmn;&nbsp;0.004 | 0.490&nbsp;&plusmn;&nbsp;0.003 | 0.67 | - | - |
+| | | ExtendedIF_0 | 0.667&nbsp;&plusmn;&nbsp;0.004 | 0.507&nbsp;&plusmn;&nbsp;0.004 | - | 0.675&nbsp;&plusmn;&nbsp;0.005 | 0.514&nbsp;&plusmn;&nbsp;0.005 |
+| | | ExtendedIF_max | 0.644&nbsp;&plusmn;&nbsp;0.003 | 0.498&nbsp;&plusmn;&nbsp;0.002 | - | 0.640&nbsp;&plusmn;&nbsp;0.004 | 0.493&nbsp;&plusmn;&nbsp;0.004 |
+| [Satellite](http://odds.cs.stonybrook.edu/satellite-dataset/) | 36 | StandardIF | 0.717&nbsp;&plusmn;&nbsp;0.008 | 0.672&nbsp;&plusmn;&nbsp;0.008 | 0.71 | - | - |
+| | | ExtendedIF_0 | 0.715&nbsp;&plusmn;&nbsp;0.004 | 0.675&nbsp;&plusmn;&nbsp;0.003 | - | 0.700&nbsp;&plusmn;&nbsp;0.004 | 0.664&nbsp;&plusmn;&nbsp;0.006 |
+| | | ExtendedIF_max | 0.725&nbsp;&plusmn;&nbsp;0.003 | 0.704&nbsp;&plusmn;&nbsp;0.004 | - | 0.740&nbsp;&plusmn;&nbsp;0.005 | 0.711&nbsp;&plusmn;&nbsp;0.005 |
+| [Shuttle](http://odds.cs.stonybrook.edu/shuttle-dataset/) | 9 | StandardIF | 0.9971&nbsp;&plusmn;&nbsp;0.0002 | 0.9742&nbsp;&plusmn;&nbsp;0.0017 | 1.00 | - | - |
+| | | ExtendedIF_0 | 0.9974&nbsp;&plusmn;&nbsp;0.0002 | 0.9789&nbsp;&plusmn;&nbsp;0.0014 | - | 0.99750&nbsp;&plusmn;&nbsp;0.00010 | 0.9805&nbsp;&plusmn;&nbsp;0.0010 |
+| | | ExtendedIF_max | 0.9934&nbsp;&plusmn;&nbsp;0.0002 | 0.822&nbsp;&plusmn;&nbsp;0.004 | - | 0.9932&nbsp;&plusmn;&nbsp;0.0002 | 0.818&nbsp;&plusmn;&nbsp;0.003 |
+| [Smtp (KDDCUP99)](http://odds.cs.stonybrook.edu/smtp-kddcup99-dataset/) | 3 | StandardIF | 0.9099&nbsp;&plusmn;&nbsp;0.0014 | 0.00450&nbsp;&plusmn;&nbsp;0.00010 | 0.88 | - | - |
+| | | ExtendedIF_0 | 0.896&nbsp;&plusmn;&nbsp;0.002 | 0.00400&nbsp;&plusmn;&nbsp;0.00010 | - | 0.897&nbsp;&plusmn;&nbsp;0.002 | 0.00410&nbsp;&plusmn;&nbsp;0.00010 |
+| | | ExtendedIF_max | 0.858&nbsp;&plusmn;&nbsp;0.003 | 0.0098&nbsp;&plusmn;&nbsp;0.0011 | - | 0.857&nbsp;&plusmn;&nbsp;0.003 | 0.014&nbsp;&plusmn;&nbsp;0.003 |
 
 </div>
 
