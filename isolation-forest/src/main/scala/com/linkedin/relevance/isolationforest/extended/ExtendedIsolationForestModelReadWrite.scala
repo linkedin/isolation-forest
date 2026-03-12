@@ -31,7 +31,7 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
   //   ExtendedNodeData constants
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   val NullIndices: Array[Int] = Array.emptyIntArray
-  val NullWeights: Array[Double] = Array.emptyDoubleArray
+  val NullWeights: Array[Float] = Array.emptyFloatArray
   val NullOffset: Double = 0.0
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -61,7 +61,7 @@ private[isolationforest] case object ExtendedIsolationForestModelReadWrite exten
     leftChild: Int,
     rightChild: Int,
     indices: Array[Int],
-    weights: Array[Double],
+    weights: Array[Float],
     offset: Double,
     numInstances: Long,
   )

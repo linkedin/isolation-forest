@@ -415,7 +415,7 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     val zeroLeaf = ExtendedExternalNode(0)
     val normalLeaf = ExtendedExternalNode(5)
     val splitHyperplane =
-      SplitHyperplane(Array(0, 1), Array(0.7071067812, 0.7071067812), 1.5)
+      SplitHyperplane(Array(0, 1), Array(0.7071067812f, 0.7071067812f), 1.5)
     val root = ExtendedInternalNode(zeroLeaf, normalLeaf, splitHyperplane)
     val tree = new ExtendedIsolationTree(root)
 
@@ -525,6 +525,43 @@ class ExtendedIsolationForestModelWriteReadTest extends Logging {
     bufferedSource.close()
 
     Assert.assertEquals(observedTreeStructure, expectedTreeStructure)
+
+    spark.stop()
+  }
+
+  @Test(enabled = false, description = "regenerateGoldenExtendedModel")
+  def regenerateGoldenExtendedModel(): Unit = {
+
+    val spark = getSparkSession
+    import spark.implicits._
+
+    val data = loadMammographyData(spark)
+
+    val extendedIF = new ExtendedIsolationForest()
+      .setNumEstimators(100)
+      .setBootstrap(false)
+      .setMaxSamples(256)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.0232)
+      .setContaminationError(0.0)
+      .setRandomSeed(1)
+
+    val model = extendedIF.fit(data)
+
+    val modelPath = "src/test/resources/savedExtendedIsolationForestModel"
+    deleteDirectory(new File(modelPath))
+    model.write.overwrite().save(modelPath)
+
+    val treeStructure = model.extendedIsolationTrees.head.extendedNode.toString
+    val writer = new java.io.PrintWriter("src/test/resources/expectedExtendedTreeStructure.txt")
+    writer.print(treeStructure)
+    writer.close()
+
+    println(s"Golden model saved to $modelPath")
+    println(s"Tree structure length: ${treeStructure.length}")
 
     spark.stop()
   }

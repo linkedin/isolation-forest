@@ -35,7 +35,7 @@ class ExtendedIsolationTreeTest {
     val leftChild = ExtendedExternalNode(10)
     val rightChild = ExtendedExternalNode(20)
     val splitHyperplane =
-      SplitHyperplane(Array(0, 1), Array(0.7071067812, 0.7071067812), 2.5)
+      SplitHyperplane(Array(0, 1), Array(0.7071067812f, 0.7071067812f), 2.5)
     val root = ExtendedInternalNode(leftChild, rightChild, splitHyperplane)
 
     val data1 = DataPoint(Array(1.0f, 2.0f))
@@ -65,7 +65,7 @@ class ExtendedIsolationTreeTest {
     // Build a tree: root splits left=zeroLeaf, right=normalLeaf.
     val zeroLeaf = ExtendedExternalNode(0)
     val normalLeaf = ExtendedExternalNode(5)
-    val splitHyperplane = SplitHyperplane(Array(0), Array(1.0), 0.5)
+    val splitHyperplane = SplitHyperplane(Array(0), Array(1.0f), 0.5)
     val root = ExtendedInternalNode(zeroLeaf, normalLeaf, splitHyperplane)
 
     // Point that goes left (dot = 0.0 < 0.5 offset) — hits the zero-size leaf
@@ -86,7 +86,7 @@ class ExtendedIsolationTreeTest {
 
     val leftChild = ExtendedExternalNode(10)
     val rightChild = ExtendedExternalNode(20)
-    val splitHyperplane = SplitHyperplane(Array(0, 2), Array(0.6, 0.8), 2.4)
+    val splitHyperplane = SplitHyperplane(Array(0, 2), Array(0.6f, 0.8f), 2.4)
     val tree = new ExtendedIsolationTree(
       ExtendedInternalNode(leftChild, rightChild, splitHyperplane),
     )
@@ -100,13 +100,13 @@ class ExtendedIsolationTreeTest {
   @Test(description = "splitHyperplaneDotMatchesDenseReferenceTest")
   def splitHyperplaneDotMatchesDenseReferenceTest(): Unit = {
 
-    val splitHyperplane = SplitHyperplane(Array(1, 3), Array(0.25, -0.75), 1.0)
+    val splitHyperplane = SplitHyperplane(Array(1, 3), Array(0.25f, -0.75f), 1.0)
     val point = DataPoint(Array(2.0f, 4.0f, 6.0f, 8.0f))
     val features = Vectors.sparse(4, Seq((1, 4.0), (3, 8.0)))
-    val expectedDot = 0.25 * 4.0 + -0.75 * 8.0
+    val expectedDot = 0.25f * 4.0f + -0.75f * 8.0f
 
-    Assert.assertEquals(splitHyperplane.dot(point), expectedDot, 1e-12)
-    Assert.assertEquals(splitHyperplane.dot(features), expectedDot, 1e-12)
+    Assert.assertEquals(splitHyperplane.dot(point), expectedDot.toDouble, 1e-6)
+    Assert.assertEquals(splitHyperplane.dot(features), expectedDot.toDouble, 1e-6)
   }
 
   @Test(
@@ -114,35 +114,35 @@ class ExtendedIsolationTreeTest {
     expectedExceptions = Array(classOf[IllegalArgumentException]),
   )
   def splitHyperplaneRejectsEmptyIndicesTest(): Unit =
-    SplitHyperplane(Array.emptyIntArray, Array.emptyDoubleArray, 0.0)
+    SplitHyperplane(Array.emptyIntArray, Array.emptyFloatArray, 0.0)
 
   @Test(
     description = "splitHyperplaneRejectsMismatchedLengthsTest",
     expectedExceptions = Array(classOf[IllegalArgumentException]),
   )
   def splitHyperplaneRejectsMismatchedLengthsTest(): Unit =
-    SplitHyperplane(Array(0, 1), Array(1.0), 0.0)
+    SplitHyperplane(Array(0, 1), Array(1.0f), 0.0)
 
   @Test(
     description = "splitHyperplaneRejectsNegativeIndicesTest",
     expectedExceptions = Array(classOf[IllegalArgumentException]),
   )
   def splitHyperplaneRejectsNegativeIndicesTest(): Unit =
-    SplitHyperplane(Array(-1, 2), Array(1.0, 2.0), 0.0)
+    SplitHyperplane(Array(-1, 2), Array(1.0f, 2.0f), 0.0)
 
   @Test(
     description = "splitHyperplaneRejectsDuplicateIndicesTest",
     expectedExceptions = Array(classOf[IllegalArgumentException]),
   )
   def splitHyperplaneRejectsDuplicateIndicesTest(): Unit =
-    SplitHyperplane(Array(1, 1), Array(1.0, 2.0), 0.0)
+    SplitHyperplane(Array(1, 1), Array(1.0f, 2.0f), 0.0)
 
   @Test(
     description = "splitHyperplaneRejectsUnsortedIndicesTest",
     expectedExceptions = Array(classOf[IllegalArgumentException]),
   )
   def splitHyperplaneRejectsUnsortedIndicesTest(): Unit =
-    SplitHyperplane(Array(2, 0), Array(1.0, 2.0), 0.0)
+    SplitHyperplane(Array(2, 0), Array(1.0f, 2.0f), 0.0)
 
   @Test(description = "hyperplaneNormalsAreL2NormalizedTest")
   def hyperplaneNormalsAreL2NormalizedTest(): Unit = {
@@ -177,11 +177,11 @@ class ExtendedIsolationTreeTest {
 
       def assertNormalized(node: ExtendedNodes.ExtendedNode): Unit = node match {
         case ExtendedInternalNode(left, right, hp) =>
-          val l2Norm = math.sqrt(hp.weights.map(x => x * x).sum)
+          val l2Norm = math.sqrt(hp.weights.map(x => x.toDouble * x.toDouble).sum)
           Assert.assertEquals(
             l2Norm,
             1.0,
-            1e-10,
+            1e-6,
             s"Hyperplane norm should be L2-normalized (seed=$seed, extLevel=$extLevel)," +
               s" but L2 norm was $l2Norm",
           )

@@ -20,7 +20,7 @@ private[isolationforest] object ExtendedUtils extends Serializable {
    */
   final class SplitHyperplane private (
     val indices: Array[Int],
-    val weights: Array[Double],
+    val weights: Array[Float],
     val offset: Double,
   ) extends Serializable {
 
@@ -62,7 +62,7 @@ private[isolationforest] object ExtendedUtils extends Serializable {
 
   object SplitHyperplane {
 
-    def apply(indices: Array[Int], weights: Array[Double], offset: Double): SplitHyperplane =
+    def apply(indices: Array[Int], weights: Array[Float], offset: Double): SplitHyperplane =
       new SplitHyperplane(indices, weights, offset)
   }
 }

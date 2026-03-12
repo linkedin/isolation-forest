@@ -183,16 +183,21 @@ private[isolationforest] object ExtendedIsolationTree extends Logging {
         if (normValue == 0) {
           ExtendedExternalNode(numInstances)
         } else {
-          // Normalize the vector
-          val normalizedWeights = new Array[Double](rawWeights.length)
+          // Normalize the vector and convert to float. Float precision is sufficient
+          // for random hyperplane directions (features are already float), and the
+          // double-precision offset handles the "where to split" precision — mirroring
+          // how standard IF uses float features with a double splitValue.
+          val normalizedWeights = new Array[Float](rawWeights.length)
           i = 0
           while (i < rawWeights.length) {
-            normalizedWeights(i) = rawWeights(i) / normValue
+            normalizedWeights(i) = (rawWeights(i) / normValue).toFloat
             i += 1
           }
 
           // Sample intercept point p from the per-coordinate ranges.
           // Only coordinates with non-zero weights in the hyperplane matter.
+          // The offset is computed with the float weights so that training and
+          // scoring are consistent.
           var splitOffset = 0.0
           var k = 0
           while (k < sparseIndices.length) {

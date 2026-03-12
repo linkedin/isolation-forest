@@ -408,7 +408,7 @@ extension level, not standard IF.
 | | | ExtendedIF_max | 0.810&nbsp;&plusmn;&nbsp;0.004 | 0.495&nbsp;&plusmn;&nbsp;0.005 | - | 0.803&nbsp;&plusmn;&nbsp;0.003 | 0.490&nbsp;&plusmn;&nbsp;0.004 |
 | [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 9 | StandardIF | 0.9864&nbsp;&plusmn;&nbsp;0.0003 | 0.9684&nbsp;&plusmn;&nbsp;0.0008 | 0.99 | - | - |
 | | | ExtendedIF_0 | 0.9878&nbsp;&plusmn;&nbsp;0.0003 | 0.9726&nbsp;&plusmn;&nbsp;0.0008 | - | 0.9873&nbsp;&plusmn;&nbsp;0.0005 | 0.9704&nbsp;&plusmn;&nbsp;0.0016 |
-| | | ExtendedIF_max | 0.9835&nbsp;&plusmn;&nbsp;0.0004 | 0.9568&nbsp;&plusmn;&nbsp;0.0015 | - | 0.9841&nbsp;&plusmn;&nbsp;0.0006 | 0.959&nbsp;&plusmn;&nbsp;0.002 |
+| | | ExtendedIF_max | 0.9835&nbsp;&plusmn;&nbsp;0.0004 | 0.9569&nbsp;&plusmn;&nbsp;0.0015 | - | 0.9841&nbsp;&plusmn;&nbsp;0.0006 | 0.959&nbsp;&plusmn;&nbsp;0.002 |
 | [Cardio](http://odds.cs.stonybrook.edu/cardiotocography-dataset/) | 21 | StandardIF | 0.928&nbsp;&plusmn;&nbsp;0.002 | 0.565&nbsp;&plusmn;&nbsp;0.008 | - | - | - |
 | | | ExtendedIF_0 | 0.921&nbsp;&plusmn;&nbsp;0.002 | 0.553&nbsp;&plusmn;&nbsp;0.009 | - | 0.918&nbsp;&plusmn;&nbsp;0.003 | 0.546&nbsp;&plusmn;&nbsp;0.013 |
 | | | ExtendedIF_max | 0.933&nbsp;&plusmn;&nbsp;0.002 | 0.541&nbsp;&plusmn;&nbsp;0.006 | - | 0.931&nbsp;&plusmn;&nbsp;0.002 | 0.547&nbsp;&plusmn;&nbsp;0.009 |
