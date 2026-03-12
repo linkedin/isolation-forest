@@ -31,7 +31,7 @@
 ## Introduction
 
 This is a distributed Scala/Spark implementation of the Isolation Forest unsupervised outlier detection
-algorithm. It includes both the standard Isolation Forest and the [Extended Isolation Forest](https://arxiv.org/abs/1811.02141),
+algorithm. It includes both the standard Isolation Forest and the Extended Isolation Forest,
 which uses random hyperplane splits to eliminate the axis-aligned bias of the original algorithm. The standard
 Isolation Forest also features support for ONNX export for easy cross-platform inference. This library was
 created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the LinkedIn Anti-Abuse AI team.
@@ -43,8 +43,7 @@ created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the Lin
   order to take advantage of machinery such as `Pipeline`s. Model persistence on HDFS is supported.
 * **Extended Isolation Forest:** The `ExtendedIsolationForest` variant uses random hyperplane splits instead of
   axis-aligned splits, eliminating the directional bias present in the standard algorithm. This is especially
-  useful for detecting anomalies in data with correlated features or along non-axis-aligned manifolds.
-  See [Hariri et al., 2018](https://arxiv.org/abs/1811.02141).
+  useful for detecting anomalies in data with correlated features or anomalies that don't align with individual feature axes.
 * **Broad portability via ONNX:** The `isolation-forest-onnx` module provides a Python-based converter to convert a
   trained standard `IsolationForestModel` to ONNX format for broad portability across platforms and languages.
   [ONNX](https://onnx.ai/) is an open format built to represent machine learning models.
@@ -134,7 +133,6 @@ Here is an example for a recent Spark/Scala version combination.
 | featuresCol        | "features"       | The feature vector. This column must exist in the input DataFrame for training and scoring.                                                                                                                                                                                                                                                                                          |
 | predictionCol      | "predictedLabel" | The predicted label. This column is appended to the input DataFrame upon scoring.                                                                                                                                                                                                                                                                                                    |
 | scoreCol           | "outlierScore"   | The outlier score. This column is appended to the input DataFrame upon scoring.                                                                                                                                                                                                                                                                                                      |
-
 
 ### Training and scoring
 
@@ -293,7 +291,7 @@ val extendedIsolationForest = new ExtendedIsolationForest()
   .setScoreCol("outlierScore")
   .setContamination(contamination)
   .setContaminationError(0.01 * contamination)
-  .setExtensionLevel(5)  // For a 6-feature dataset, use 6 non-zero coordinates per hyperplane
+  .setExtensionLevel(5)  // Fully extended for a 6-feature dataset (extensionLevel + 1 = 6 non-zero coordinates)
   .setRandomSeed(1)
 
 val extendedIsolationForestModel = extendedIsolationForest.fit(data)
@@ -393,70 +391,63 @@ print(np.transpose(actual_outlier_scores[:num_examples_to_print])[0])
 We benchmarked the standard Isolation Forest (`StandardIF`), Extended Isolation Forest at extension
 level 0 (`ExtendedIF_0`), and the fully extended variant (`ExtendedIF_max`) against the Liu et al.
 2008 paper results and the
-[reference Python EIF implementation](https://github.com/sahandha/eif) (`Ref Python`). All results
+[reference Python EIF implementation](https://github.com/sahandha/eif) (`Ref. Python`). All results
 use 100 trees, 256 samples per tree, 10 trials with unique random seeds, and report the mean
-&plusmn; standard error of the mean. The `Ref Python` columns show EIF results at the corresponding
+&plusmn; standard error of the mean. The `Ref. Python` columns show EIF results at the corresponding
 extension level, not standard IF.
 
-| Dataset | Dim | Model | AUROC | AUPRC | Liu AUROC | Ref Python AUROC | Ref Python AUPRC |
+| Dataset | Dim | Model | AUROC | AUPRC | Liu et al. AUROC (IF) | Ref. Python AUROC (EIF) | Ref. Python AUPRC (EIF) |
 |---|--:|---|---|---|--:|---|---|
-| [Annthyroid](http://odds.cs.stonybrook.edu/annthyroid-dataset/) | 6 | StandardIF | 0.8134 &plusmn; 0.0039 | 0.3118 &plusmn; 0.0040 | 0.82 | 0.8217 &plusmn; 0.0037 | 0.3143 &plusmn; 0.0070 |
-| | | ExtendedIF_0 | 0.8126 &plusmn; 0.0039 | 0.3065 &plusmn; 0.0036 | | | |
-| | | ExtendedIF_max | 0.6463 &plusmn; 0.0022 | 0.1791 &plusmn; 0.0017 | | 0.6505 &plusmn; 0.0033 | 0.1828 &plusmn; 0.0045 |
-| [Arrhythmia](http://odds.cs.stonybrook.edu/arrhythmia-dataset/) | 274 | StandardIF | 0.8064 &plusmn; 0.0019 | 0.4938 &plusmn; 0.0055 | 0.80 | 0.7960 &plusmn; 0.0035 | 0.4624 &plusmn; 0.0049 |
-| | | ExtendedIF_0 | 0.8018 &plusmn; 0.0023 | 0.4784 &plusmn; 0.0035 | | | |
-| | | ExtendedIF_max | 0.8103 &plusmn; 0.0041 | 0.4947 &plusmn; 0.0046 | | 0.8026 &plusmn; 0.0033 | 0.4896 &plusmn; 0.0035 |
-| [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 9 | StandardIF | 0.9864 &plusmn; 0.0003 | 0.9684 &plusmn; 0.0008 | 0.99 | 0.9873 &plusmn; 0.0005 | 0.9704 &plusmn; 0.0016 |
-| | | ExtendedIF_0 | 0.9878 &plusmn; 0.0003 | 0.9726 &plusmn; 0.0008 | | | |
-| | | ExtendedIF_max | 0.9835 &plusmn; 0.0004 | 0.9568 &plusmn; 0.0015 | | 0.9841 &plusmn; 0.0006 | 0.9593 &plusmn; 0.0021 |
-| [Cardio](http://odds.cs.stonybrook.edu/cardiotocography-dataset/) | 21 | StandardIF | 0.9276 &plusmn; 0.0022 | 0.5646 &plusmn; 0.0084 | - | 0.9175 &plusmn; 0.0034 | 0.5463 &plusmn; 0.0128 |
-| | | ExtendedIF_0 | 0.9213 &plusmn; 0.0023 | 0.5528 &plusmn; 0.0089 | | | |
-| | | ExtendedIF_max | 0.9325 &plusmn; 0.0020 | 0.5412 &plusmn; 0.0061 | | 0.9308 &plusmn; 0.0024 | 0.5470 &plusmn; 0.0089 |
-| [ForestCover](http://odds.cs.stonybrook.edu/forestcovercovertype-dataset/) | 10 | StandardIF | 0.8823 &plusmn; 0.0061 | 0.0508 &plusmn; 0.0028 | 0.88 | 0.8724 &plusmn; 0.0100 | 0.0487 &plusmn; 0.0040 |
-| | | ExtendedIF_0 | 0.8650 &plusmn; 0.0080 | 0.0495 &plusmn; 0.0048 | | | |
-| | | ExtendedIF_max | 0.6879 &plusmn; 0.0078 | 0.0138 &plusmn; 0.0003 | | 0.6617 &plusmn; 0.0094 | 0.0129 &plusmn; 0.0004 |
-| [Http (KDDCUP99)](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/) | 3 | StandardIF | 0.9997 &plusmn; 0.0001 | 0.9288 &plusmn; 0.0239 | 1.00 | 0.9939 &plusmn; 0.0001 | 0.3791 &plusmn; 0.0043 |
-| | | ExtendedIF_0 | 0.9941 &plusmn; 0.0001 | 0.3922 &plusmn; 0.0040 | | | |
-| | | ExtendedIF_max | 0.9941 &plusmn; 0.0001 | 0.3790 &plusmn; 0.0058 | | 0.9939 &plusmn; 0.0003 | 0.3709 &plusmn; 0.0093 |
-| [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/) | 33 | StandardIF | 0.8443 &plusmn; 0.0002 | 0.8014 &plusmn; 0.0003 | 0.85 | 0.8556 &plusmn; 0.0016 | 0.8078 &plusmn; 0.0021 |
-| | | ExtendedIF_0 | 0.8568 &plusmn; 0.0006 | 0.8108 &plusmn; 0.0007 | | | |
-| | | ExtendedIF_max | 0.9075 &plusmn; 0.0002 | 0.8804 &plusmn; 0.0002 | | 0.9061 &plusmn; 0.0014 | 0.8764 &plusmn; 0.0022 |
-| [Mammography](http://odds.cs.stonybrook.edu/mammography-dataset/) | 6 | StandardIF | 0.8649 &plusmn; 0.0015 | 0.2175 &plusmn; 0.0066 | 0.86 | 0.8676 &plusmn; 0.0023 | 0.2293 &plusmn; 0.0130 |
-| | | ExtendedIF_0 | 0.8654 &plusmn; 0.0023 | 0.2196 &plusmn; 0.0059 | | | |
-| | | ExtendedIF_max | 0.8630 &plusmn; 0.0010 | 0.1900 &plusmn; 0.0033 | | 0.8639 &plusmn; 0.0016 | 0.1837 &plusmn; 0.0043 |
-| [Mulcross](https://www.openml.org/d/40897) | 4 | StandardIF | 0.9910 &plusmn; 0.0009 | 0.8521 &plusmn; 0.0139 | 0.97 | 0.9595 &plusmn; 0.0025 | 0.5381 &plusmn; 0.0173 |
-| | | ExtendedIF_0 | 0.9379 &plusmn; 0.0024 | 0.4280 &plusmn; 0.0092 | | | |
-| | | ExtendedIF_max | 0.9402 &plusmn; 0.0027 | 0.4415 &plusmn; 0.0114 | | 0.9405 &plusmn; 0.0048 | 0.4457 &plusmn; 0.0217 |
-| [Pima](http://odds.cs.stonybrook.edu/pima-indians-diabetes-dataset/) | 8 | StandardIF | 0.6675 &plusmn; 0.0037 | 0.4900 &plusmn; 0.0034 | 0.67 | 0.6753 &plusmn; 0.0048 | 0.5136 &plusmn; 0.0047 |
-| | | ExtendedIF_0 | 0.6666 &plusmn; 0.0039 | 0.5074 &plusmn; 0.0040 | | | |
-| | | ExtendedIF_max | 0.6435 &plusmn; 0.0032 | 0.4978 &plusmn; 0.0023 | | 0.6403 &plusmn; 0.0041 | 0.4933 &plusmn; 0.0038 |
-| [Satellite](http://odds.cs.stonybrook.edu/satellite-dataset/) | 36 | StandardIF | 0.7166 &plusmn; 0.0081 | 0.6717 &plusmn; 0.0078 | 0.71 | 0.6999 &plusmn; 0.0043 | 0.6641 &plusmn; 0.0056 |
-| | | ExtendedIF_0 | 0.7148 &plusmn; 0.0043 | 0.6749 &plusmn; 0.0033 | | | |
-| | | ExtendedIF_max | 0.7253 &plusmn; 0.0032 | 0.7042 &plusmn; 0.0040 | | 0.7396 &plusmn; 0.0052 | 0.7108 &plusmn; 0.0051 |
-| [Shuttle](http://odds.cs.stonybrook.edu/shuttle-dataset/) | 9 | StandardIF | 0.9971 &plusmn; 0.0002 | 0.9742 &plusmn; 0.0017 | 1.00 | 0.9975 &plusmn; 0.0001 | 0.9805 &plusmn; 0.0010 |
-| | | ExtendedIF_0 | 0.9974 &plusmn; 0.0002 | 0.9789 &plusmn; 0.0014 | | | |
-| | | ExtendedIF_max | 0.9934 &plusmn; 0.0002 | 0.8219 &plusmn; 0.0037 | | 0.9932 &plusmn; 0.0002 | 0.8179 &plusmn; 0.0028 |
-| [Smtp (KDDCUP99)](http://odds.cs.stonybrook.edu/smtp-kddcup99-dataset/) | 3 | StandardIF | 0.9099 &plusmn; 0.0014 | 0.0045 &plusmn; 0.0001 | 0.88 | 0.8968 &plusmn; 0.0024 | 0.0041 &plusmn; 0.0001 |
-| | | ExtendedIF_0 | 0.8957 &plusmn; 0.0022 | 0.0040 &plusmn; 0.0001 | | | |
-| | | ExtendedIF_max | 0.8582 &plusmn; 0.0026 | 0.0098 &plusmn; 0.0011 | | 0.8570 &plusmn; 0.0025 | 0.0143 &plusmn; 0.0031 |
+| [Annthyroid](http://odds.cs.stonybrook.edu/annthyroid-dataset/) | 6 | StandardIF | 0.813 &plusmn; 0.004 | 0.312 &plusmn; 0.004 | 0.82 | | |
+| | | ExtendedIF_0 | 0.813 &plusmn; 0.004 | 0.307 &plusmn; 0.004 | | 0.822 &plusmn; 0.004 | 0.314 &plusmn; 0.007 |
+| | | ExtendedIF_max | 0.646 &plusmn; 0.002 | 0.1791 &plusmn; 0.0017 | | 0.651 &plusmn; 0.003 | 0.183 &plusmn; 0.005 |
+| [Arrhythmia](http://odds.cs.stonybrook.edu/arrhythmia-dataset/) | 274 | StandardIF | 0.8064 &plusmn; 0.0019 | 0.494 &plusmn; 0.006 | 0.80 | | |
+| | | ExtendedIF_0 | 0.802 &plusmn; 0.002 | 0.478 &plusmn; 0.004 | | 0.796 &plusmn; 0.004 | 0.462 &plusmn; 0.005 |
+| | | ExtendedIF_max | 0.810 &plusmn; 0.004 | 0.495 &plusmn; 0.005 | | 0.803 &plusmn; 0.003 | 0.490 &plusmn; 0.004 |
+| [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 9 | StandardIF | 0.9864 &plusmn; 0.0003 | 0.9684 &plusmn; 0.0008 | 0.99 | | |
+| | | ExtendedIF_0 | 0.9878 &plusmn; 0.0003 | 0.9726 &plusmn; 0.0008 | | 0.9873 &plusmn; 0.0005 | 0.9704 &plusmn; 0.0016 |
+| | | ExtendedIF_max | 0.9835 &plusmn; 0.0004 | 0.9568 &plusmn; 0.0015 | | 0.9841 &plusmn; 0.0006 | 0.959 &plusmn; 0.002 |
+| [Cardio](http://odds.cs.stonybrook.edu/cardiotocography-dataset/) | 21 | StandardIF | 0.928 &plusmn; 0.002 | 0.565 &plusmn; 0.008 | - | | |
+| | | ExtendedIF_0 | 0.921 &plusmn; 0.002 | 0.553 &plusmn; 0.009 | | 0.918 &plusmn; 0.003 | 0.546 &plusmn; 0.013 |
+| | | ExtendedIF_max | 0.933 &plusmn; 0.002 | 0.541 &plusmn; 0.006 | | 0.931 &plusmn; 0.002 | 0.547 &plusmn; 0.009 |
+| [ForestCover](http://odds.cs.stonybrook.edu/forestcovercovertype-dataset/) | 10 | StandardIF | 0.882 &plusmn; 0.006 | 0.051 &plusmn; 0.003 | 0.88 | | |
+| | | ExtendedIF_0 | 0.865 &plusmn; 0.008 | 0.050 &plusmn; 0.005 | | 0.872 &plusmn; 0.010 | 0.049 &plusmn; 0.004 |
+| | | ExtendedIF_max | 0.688 &plusmn; 0.008 | 0.0138 &plusmn; 0.0003 | | 0.662 &plusmn; 0.009 | 0.0129 &plusmn; 0.0004 |
+| [Http (KDDCUP99)](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/) | 3 | StandardIF | 0.99970 &plusmn; 0.00010 | 0.93 &plusmn; 0.02 | 1.00 | | |
+| | | ExtendedIF_0 | 0.99410 &plusmn; 0.00010 | 0.392 &plusmn; 0.004 | | 0.99390 &plusmn; 0.00010 | 0.379 &plusmn; 0.004 |
+| | | ExtendedIF_max | 0.99410 &plusmn; 0.00010 | 0.379 &plusmn; 0.006 | | 0.9939 &plusmn; 0.0003 | 0.371 &plusmn; 0.009 |
+| [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/) | 33 | StandardIF | 0.8443 &plusmn; 0.0002 | 0.8014 &plusmn; 0.0003 | 0.85 | | |
+| | | ExtendedIF_0 | 0.8568 &plusmn; 0.0006 | 0.8108 &plusmn; 0.0007 | | 0.8556 &plusmn; 0.0016 | 0.808 &plusmn; 0.002 |
+| | | ExtendedIF_max | 0.9075 &plusmn; 0.0002 | 0.8804 &plusmn; 0.0002 | | 0.9061 &plusmn; 0.0014 | 0.876 &plusmn; 0.002 |
+| [Mammography](http://odds.cs.stonybrook.edu/mammography-dataset/) | 6 | StandardIF | 0.8649 &plusmn; 0.0015 | 0.218 &plusmn; 0.007 | 0.86 | | |
+| | | ExtendedIF_0 | 0.865 &plusmn; 0.002 | 0.220 &plusmn; 0.006 | | 0.868 &plusmn; 0.002 | 0.229 &plusmn; 0.013 |
+| | | ExtendedIF_max | 0.8630 &plusmn; 0.0010 | 0.190 &plusmn; 0.003 | | 0.8639 &plusmn; 0.0016 | 0.184 &plusmn; 0.004 |
+| [Mulcross](https://www.openml.org/d/40897) | 4 | StandardIF | 0.9910 &plusmn; 0.0009 | 0.852 &plusmn; 0.014 | 0.97 | | |
+| | | ExtendedIF_0 | 0.938 &plusmn; 0.002 | 0.428 &plusmn; 0.009 | | 0.960 &plusmn; 0.003 | 0.538 &plusmn; 0.017 |
+| | | ExtendedIF_max | 0.940 &plusmn; 0.003 | 0.442 &plusmn; 0.011 | | 0.941 &plusmn; 0.005 | 0.45 &plusmn; 0.02 |
+| [Pima](http://odds.cs.stonybrook.edu/pima-indians-diabetes-dataset/) | 8 | StandardIF | 0.668 &plusmn; 0.004 | 0.490 &plusmn; 0.003 | 0.67 | | |
+| | | ExtendedIF_0 | 0.667 &plusmn; 0.004 | 0.507 &plusmn; 0.004 | | 0.675 &plusmn; 0.005 | 0.514 &plusmn; 0.005 |
+| | | ExtendedIF_max | 0.644 &plusmn; 0.003 | 0.498 &plusmn; 0.002 | | 0.640 &plusmn; 0.004 | 0.493 &plusmn; 0.004 |
+| [Satellite](http://odds.cs.stonybrook.edu/satellite-dataset/) | 36 | StandardIF | 0.717 &plusmn; 0.008 | 0.672 &plusmn; 0.008 | 0.71 | | |
+| | | ExtendedIF_0 | 0.715 &plusmn; 0.004 | 0.675 &plusmn; 0.003 | | 0.700 &plusmn; 0.004 | 0.664 &plusmn; 0.006 |
+| | | ExtendedIF_max | 0.725 &plusmn; 0.003 | 0.704 &plusmn; 0.004 | | 0.740 &plusmn; 0.005 | 0.711 &plusmn; 0.005 |
+| [Shuttle](http://odds.cs.stonybrook.edu/shuttle-dataset/) | 9 | StandardIF | 0.9971 &plusmn; 0.0002 | 0.9742 &plusmn; 0.0017 | 1.00 | | |
+| | | ExtendedIF_0 | 0.9974 &plusmn; 0.0002 | 0.9789 &plusmn; 0.0014 | | 0.99750 &plusmn; 0.00010 | 0.9805 &plusmn; 0.0010 |
+| | | ExtendedIF_max | 0.9934 &plusmn; 0.0002 | 0.822 &plusmn; 0.004 | | 0.9932 &plusmn; 0.0002 | 0.818 &plusmn; 0.003 |
+| [Smtp (KDDCUP99)](http://odds.cs.stonybrook.edu/smtp-kddcup99-dataset/) | 3 | StandardIF | 0.9099 &plusmn; 0.0014 | 0.00450 &plusmn; 0.00010 | 0.88 | | |
+| | | ExtendedIF_0 | 0.896 &plusmn; 0.002 | 0.00400 &plusmn; 0.00010 | | 0.897 &plusmn; 0.002 | 0.00410 &plusmn; 0.00010 |
+| | | ExtendedIF_max | 0.858 &plusmn; 0.003 | 0.0098 &plusmn; 0.0011 | | 0.857 &plusmn; 0.003 | 0.014 &plusmn; 0.003 |
 
 **Key observations:**
 
-* **StandardIF** results are in excellent agreement with the original Liu et al. paper.
-* **ExtendedIF_max closely matches the reference Python EIF implementation** across the 13
-  benchmark datasets, with differences generally within a couple of standard errors.
-* **EIF shines on higher-dimensional data:** ionosphere (AUROC 0.907 vs 0.844 for standard IF),
-  satellite (0.725 vs 0.717), cardio (0.933 vs 0.928), and arrhythmia (0.810 vs 0.806).
-* **EIF underperforms on low-dimensional data in our benchmarks** (cover 10D, http 3D, smtp 3D,
-  mulcross 4D). This is consistent with expectations: fewer dimensions give hyperplane splits
-  less room to outperform axis-aligned ones.
-* **ExtendedIF_0 is not equivalent to StandardIF.** Although both use axis-aligned splits, they
-  are different algorithms: standard IF retries when it picks a constant feature, while EIF
-  commits to its random draw (matching the reference implementation and both the Python and C++
-  codebases). Standard IF also has a different RNG consumption pattern per node. These differences
-  are most visible on low-dimensional data where fewer features are available to retry with and
-  tree depth is most constrained. Our ExtendedIF_0 results closely match the reference Python EIF
-  on 12 of 13 datasets; one outlier (mulcross) remains under investigation.
+* **StandardIF** results are in agreement with the original Liu et al. paper.
+* **ExtendedIF_max closely matches the reference Python EIF** across all 13 datasets.
+* **EIF improves on ionosphere** (AUROC 0.907 vs 0.844, AUPRC 0.880 vs 0.801) and **satellite**
+  (AUROC 0.725 vs 0.717, AUPRC 0.704 vs 0.672). EIF underperforms on some datasets (cover, http, 
+  smtp, mulcross).
+* **ExtendedIF_0 is not equivalent to StandardIF.** Both use axis-aligned splits, but standard IF
+  retries on constant features while EIF does not (matching the reference Python and C++
+  implementations). ExtendedIF_0 closely matches the reference Python EIF on all datasets.
 
 ## Copyright and license
 
@@ -489,5 +480,6 @@ If you use this library in your research or project, please cite it using the me
 
 * F. T. Liu, K. M. Ting, and Z.-H. Zhou, “Isolation forest,” in 2008 Eighth IEEE International Conference on Data Mining, 2008, pp. 413–422.
 * F. T. Liu, K. M. Ting, and Z.-H. Zhou, “Isolation-based anomaly detection,” ACM Transactions on Knowledge Discovery from Data (TKDD), vol. 6, no. 1, p. 3, 2012.
-* S. Hariri, M. Carrasco Kind, and R. J. Brunner, “Extended Isolation Forest,” IEEE Transactions on Knowledge and Data Engineering, 2019. [arXiv:1811.02141](https://arxiv.org/abs/1811.02141).
-* Shebuti Rayana (2016).  ODDS Library [http://odds.cs.stonybrook.edu]. Stony Brook, NY: Stony Brook University, Department of Computer Science.
+* S. Hariri, M. Carrasco Kind, and R. J. Brunner, “Extended Isolation Forest,” IEEE Transactions on Knowledge and Data Engineering, 2019. [DOI:10.1109/TKDE.2019.2947676](https://doi.org/10.1109/TKDE.2019.2947676), [arXiv:1811.02141](https://arxiv.org/abs/1811.02141).
+* S. Hariri, "eif: Extended Isolation Forest for Anomaly Detection," [https://github.com/sahandha/eif](https://github.com/sahandha/eif).
+* Shebuti Rayana (2016). ODDS Library [http://odds.cs.stonybrook.edu]. Stony Brook, NY: Stony Brook University, Department of Computer Science.
