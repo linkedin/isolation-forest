@@ -447,7 +447,7 @@ extension level, not standard IF.
 * **StandardIF** results are in agreement with the original Liu et al. paper.
 * **ExtendedIF_max closely matches the reference Python EIF** across all 13 datasets.
 * **EIF improves on high-dimensional datasets**, e.g., **ionosphere** (AUROC 0.907 vs 0.844, AUPRC 0.880 vs 0.801) and **satellite**
-  (AUROC 0.725 vs 0.717, AUPRC 0.704 vs 0.672). EIF underperforms IF on some dataset.
+  (AUROC 0.725 vs 0.717, AUPRC 0.704 vs 0.672). EIF underperforms IF on some datasets.
 * **ExtendedIF_0 is not equivalent to StandardIF.** Both use axis-aligned splits, but standard IF
   retries on constant features while EIF does not (matching the reference Python and C++
   implementations). ExtendedIF_0 closely matches the reference Python EIF on all datasets.
