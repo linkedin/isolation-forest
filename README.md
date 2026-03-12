@@ -396,7 +396,9 @@ use 100 trees, 256 samples per tree, 10 trials with unique random seeds, and rep
 &plusmn; standard error of the mean. The `Ref. Python` columns show EIF results at the corresponding
 extension level, not standard IF.
 
-| Dataset | Dim | Model | AUROC | AUPRC | Liu et al. AUROC (IF) | Ref. Python AUROC (EIF) | Ref. Python AUPRC (EIF) |
+<div style="overflow-x: auto;">
+
+| Dataset | Dim | Model | AUROC | AUPRC | Liu&nbsp;et&nbsp;al.&nbsp;AUROC&nbsp;(IF) | Ref.&nbsp;Python&nbsp;AUROC&nbsp;(EIF) | Ref.&nbsp;Python&nbsp;AUPRC&nbsp;(EIF) |
 |---|--:|---|---|---|--:|---|---|
 | [Annthyroid](http://odds.cs.stonybrook.edu/annthyroid-dataset/) | 6 | StandardIF | 0.813 &plusmn; 0.004 | 0.312 &plusmn; 0.004 | 0.82 | | |
 | | | ExtendedIF_0 | 0.813 &plusmn; 0.004 | 0.307 &plusmn; 0.004 | | 0.822 &plusmn; 0.004 | 0.314 &plusmn; 0.007 |
@@ -437,6 +439,8 @@ extension level, not standard IF.
 | [Smtp (KDDCUP99)](http://odds.cs.stonybrook.edu/smtp-kddcup99-dataset/) | 3 | StandardIF | 0.9099 &plusmn; 0.0014 | 0.00450 &plusmn; 0.00010 | 0.88 | | |
 | | | ExtendedIF_0 | 0.896 &plusmn; 0.002 | 0.00400 &plusmn; 0.00010 | | 0.897 &plusmn; 0.002 | 0.00410 &plusmn; 0.00010 |
 | | | ExtendedIF_max | 0.858 &plusmn; 0.003 | 0.0098 &plusmn; 0.0011 | | 0.857 &plusmn; 0.003 | 0.014 &plusmn; 0.003 |
+
+</div>
 
 **Key observations:**
 
