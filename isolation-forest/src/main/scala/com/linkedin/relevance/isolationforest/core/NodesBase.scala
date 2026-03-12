@@ -10,6 +10,7 @@ private[isolationforest] case object NodesBase {
 
     /** The subtree depth: 0 for a leaf, otherwise 1 + max of children. */
     val subtreeDepth: Int
+    def toString: String
   }
 
   /**
@@ -19,10 +20,8 @@ private[isolationforest] case object NodesBase {
   trait ExternalNodeBase extends NodeBase {
 
     val numInstances: Long
-    require(numInstances > 0, s"numInstances must be > 0, but got $numInstances")
 
     override val subtreeDepth: Int = 0
-    override def toString: String = s"ExternalNode(numInstances = $numInstances)"
   }
 
   /**

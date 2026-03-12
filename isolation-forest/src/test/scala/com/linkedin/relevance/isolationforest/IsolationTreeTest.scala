@@ -17,9 +17,9 @@ class IsolationTreeTest {
 
     val heightLimit = 15
     val randomState = new scala.util.Random(1)
-    val featureIndicies = dataArray.head.features.indices.toArray
+    val featureIndices = dataArray.head.features.indices.toArray
     val root = IsolationTree
-      .generateIsolationTree(dataArray, heightLimit, randomState, featureIndicies)
+      .generateIsolationTree(dataArray, heightLimit, randomState, featureIndices)
 
     Assert.assertEquals(root.subtreeDepth, heightLimit)
   }

@@ -1,0 +1,568 @@
+package com.linkedin.relevance.isolationforest.extended
+
+import com.linkedin.relevance.isolationforest.core.TestUtils.{
+  LabeledDataPointVector,
+  ScoringResult,
+  getSparkSession,
+  loadMammographyData,
+}
+import com.linkedin.relevance.isolationforest.extended.ExtendedNodes.{
+  ExtendedExternalNode,
+  ExtendedInternalNode,
+  ExtendedNode,
+}
+import com.linkedin.relevance.isolationforest.extended.ExtendedUtils.SplitHyperplane
+import org.apache.commons.io.FileUtils.deleteDirectory
+import org.apache.spark.internal.Logging
+import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.ml.linalg.Vectors
+import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
+import org.testng.Assert
+import org.testng.annotations.Test
+
+import java.io.File
+
+/**
+ * A suite of tests mirroring IsolationForestModelWriteReadTest but for the ExtendedIsolationForest.
+ * We verify that saving and loading a trained ExtendedIsolationForestModel preserves: 1) Model
+ * params (like randomSeed, contamination, etc.) 2) Scores and predictions 3) Tree structures 4)
+ * Behavior with zero contamination and identical-feature data 5) Behavior with an empty extended
+ * forest
+ */
+class ExtendedIsolationForestModelWriteReadTest extends Logging {
+
+  private def assertErrorContains(error: Throwable, expectedMessage: String): Unit = {
+    @scala.annotation.tailrec
+    def containsMessage(current: Throwable): Boolean =
+      if (current == null) {
+        false
+      } else if (current.getMessage != null && current.getMessage.contains(expectedMessage)) {
+        true
+      } else {
+        containsMessage(current.getCause)
+      }
+
+    Assert.assertTrue(
+      containsMessage(error),
+      s"Expected an exception containing '$expectedMessage', but observed: ${error}",
+    )
+  }
+
+  private def assertTreesEqual(a: ExtendedNode, b: ExtendedNode, eps: Double = 1e-12): Unit =
+    (a, b) match {
+      case (ExtendedExternalNode(n1), ExtendedExternalNode(n2)) =>
+        Assert.assertEquals(n1, n2, "numInstances mismatch")
+      case (ExtendedInternalNode(l1, r1, h1), ExtendedInternalNode(l2, r2, h2)) =>
+        Assert.assertTrue(
+          h1.indices.sameElements(h2.indices),
+          s"indices mismatch: ${h1.indices.mkString(",")} vs ${h2.indices.mkString(",")}",
+        )
+        Assert.assertEquals(h1.weights.length, h2.weights.length, "weights length mismatch")
+        h1.weights.zip(h2.weights).foreach { case (v1, v2) =>
+          Assert.assertTrue(math.abs(v1 - v2) < eps, s"weights mismatch: $v1 vs $v2")
+        }
+        Assert.assertTrue(
+          math.abs(h1.offset - h2.offset) < eps,
+          s"offset mismatch: ${h1.offset} vs ${h2.offset}",
+        )
+        assertTreesEqual(l1, l2, eps)
+        assertTreesEqual(r1, r2, eps)
+      case _ =>
+        Assert.fail(
+          s"Node type mismatch: ${a.getClass.getSimpleName} vs ${b.getClass.getSimpleName}",
+        )
+    }
+
+  @Test(description = "extendedIsolationForestModelWriteReadTest")
+  def extendedIsolationForestModelWriteReadTest(): Unit = {
+
+    val spark = getSparkSession
+    import spark.implicits._
+
+    val data = loadMammographyData(spark)
+
+    // Train a new extended isolation forest model
+    val extendedIF = new ExtendedIsolationForest()
+      .setNumEstimators(100)
+      .setBootstrap(false)
+      .setMaxSamples(256)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.02)
+      .setRandomSeed(1)
+      .setExtensionLevel(1) // Example: partial extension
+
+    val extendedIFModel1 = extendedIF.fit(data)
+
+    // Write the trained model to disk and then read it back from disk
+    val savePath = System.getProperty("java.io.tmpdir") + "/savedExtendedIsolationForestModel"
+    extendedIFModel1.write.overwrite().save(savePath)
+    val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
+    deleteDirectory(new File(savePath))
+
+    // Assert that all parameter values are equal
+    Assert.assertEquals(
+      extendedIFModel1.extractParamMap().toString,
+      extendedIFModel2.extractParamMap().toString,
+    )
+    Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
+    Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
+    Assert.assertEquals(
+      extendedIFModel1.getTotalNumFeatures,
+      extendedIFModel2.getTotalNumFeatures,
+    )
+    Assert.assertEquals(
+      extendedIFModel1.getOutlierScoreThreshold,
+      extendedIFModel2.getOutlierScoreThreshold,
+    )
+
+    // Calculate the AUC for both the original and saved/loaded model and assert they are equal
+    val scores1 = extendedIFModel1.transform(data).as[ScoringResult]
+    val metrics1 = new BinaryClassificationMetrics(scores1.rdd.map(x => (x.outlierScore, x.label)))
+    val auroc1 = metrics1.areaUnderROC()
+
+    val scores2 = extendedIFModel2.transform(data).as[ScoringResult]
+    val metrics2 = new BinaryClassificationMetrics(scores2.rdd.map(x => (x.outlierScore, x.label)))
+    val auroc2 = metrics2.areaUnderROC()
+
+    Assert.assertEquals(auroc1, auroc2)
+
+    // Assert the predicted labels are equal
+    val predictedLabels1 = scores1.map(x => x.predictedLabel).collect()
+    val predictedLabels2 = scores2.map(x => x.predictedLabel).collect()
+    Assert.assertEquals(predictedLabels1.toSeq, predictedLabels2.toSeq)
+
+    // Compare each tree in the original and saved/loaded model and assert they are equal
+    extendedIFModel1.extendedIsolationTrees
+      .zip(extendedIFModel2.extendedIsolationTrees)
+      .foreach { case (tree1: ExtendedIsolationTree, tree2: ExtendedIsolationTree) =>
+        assertTreesEqual(tree1.extendedNode, tree2.extendedNode)
+      }
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestModelZeroContaminationWriteReadTest")
+  def extendedIsolationForestModelZeroContaminationWriteReadTest(): Unit = {
+
+    val spark = getSparkSession
+    import spark.implicits._
+
+    val data = loadMammographyData(spark)
+
+    // Train a new extended isolation forest model
+    val extendedIF = new ExtendedIsolationForest()
+      .setNumEstimators(100)
+      .setBootstrap(false)
+      .setMaxSamples(256)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.0)
+      .setRandomSeed(1)
+
+    val extendedIFModel1 = extendedIF.fit(data)
+
+    // Write the trained model to disk and then read it back from disk
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/savedExtendedIsolationForestModelZeroContamination"
+    extendedIFModel1.write.overwrite().save(savePath)
+    val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
+    deleteDirectory(new File(savePath))
+
+    // Assert that all parameter values are equal
+    Assert.assertEquals(
+      extendedIFModel1.extractParamMap().toString,
+      extendedIFModel2.extractParamMap().toString,
+    )
+    Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
+    Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
+    Assert.assertEquals(
+      extendedIFModel1.getTotalNumFeatures,
+      extendedIFModel2.getTotalNumFeatures,
+    )
+    Assert.assertEquals(
+      extendedIFModel1.getOutlierScoreThreshold,
+      extendedIFModel2.getOutlierScoreThreshold,
+    )
+
+    // Calculate the AUC for both the original and saved/loaded model and assert they are equal
+    val scores1 = extendedIFModel1.transform(data).as[ScoringResult]
+    val metrics1 = new BinaryClassificationMetrics(scores1.rdd.map(x => (x.outlierScore, x.label)))
+    val auroc1 = metrics1.areaUnderROC()
+
+    val scores2 = extendedIFModel2.transform(data).as[ScoringResult]
+    val metrics2 = new BinaryClassificationMetrics(scores2.rdd.map(x => (x.outlierScore, x.label)))
+    val auroc2 = metrics2.areaUnderROC()
+
+    Assert.assertEquals(auroc1, auroc2)
+
+    // Assert the predicted labels are equal and always 0.0
+    val predictedLabels1 = scores1.map(x => x.predictedLabel).collect()
+    val predictedLabels2 = scores2.map(x => x.predictedLabel).collect()
+    val expectedLabels = Array.fill[Double](predictedLabels1.length)(0.0)
+    Assert.assertEquals(predictedLabels1.toSeq, predictedLabels2.toSeq)
+    Assert.assertEquals(predictedLabels2.toSeq, expectedLabels.toSeq)
+
+    // Compare each tree in the original and saved/loaded model and assert they are equal
+    extendedIFModel1.extendedIsolationTrees
+      .zip(extendedIFModel2.extendedIsolationTrees)
+      .foreach { case (tree1: ExtendedIsolationTree, tree2: ExtendedIsolationTree) =>
+        assertTreesEqual(tree1.extendedNode, tree2.extendedNode)
+      }
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestIdenticalFeatureValuesWriteReadTest")
+  def extendedIsolationForestIdenticalFeatureValuesWriteReadTest(): Unit = {
+
+    val spark = getSparkSession
+    import spark.implicits._
+
+    val rawData = Seq(
+      (0.0, 1.0, 2.0, 3.0, 1.0),
+      (0.0, 1.0, 2.0, 3.0, 1.0),
+      (0.0, 1.0, 2.0, 3.0, 0.0),
+      (0.0, 1.0, 2.0, 3.0, 0.0),
+      (0.0, 1.0, 2.0, 3.0, 1.0),
+    ).toDF("feature0", "feature1", "feature2", "feature3", "label")
+
+    val assembler = new VectorAssembler()
+      .setInputCols(Array("feature0", "feature1", "feature2", "feature3"))
+      .setOutputCol("features")
+
+    val data = assembler
+      .transform(rawData)
+      .select("features", "label")
+      .as[LabeledDataPointVector]
+
+    // Train a new extended isolation forest model
+    val extendedIF = new ExtendedIsolationForest()
+      .setNumEstimators(100)
+      .setBootstrap(false)
+      .setMaxSamples(3)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.1)
+      .setRandomSeed(1)
+
+    val extendedIFModel1 = extendedIF.fit(data)
+
+    // Write the trained model to disk and then read it back from disk
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/savedExtendedIsolationForestModelIdenticalFeatures"
+    extendedIFModel1.write.overwrite().save(savePath)
+    val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
+    deleteDirectory(new File(savePath))
+
+    // In many extended splits, if all features are identical, the node may still become a leaf.
+    // So we can check something like: Are all top nodes leaves or do they remain?
+    // This is optional. We'll just verify the transform output is the same, which is the key test.
+
+    // Calculate the scores using both models and assert they are equal
+    val scores1 = extendedIFModel1.transform(data).as[ScoringResult]
+    val scores2 = extendedIFModel2.transform(data).as[ScoringResult]
+
+    Assert.assertEquals(
+      scores1.map(x => x.outlierScore).collect().toSeq,
+      scores2.map(x => x.outlierScore).collect().toSeq,
+    )
+
+    spark.stop()
+  }
+
+  @Test(description = "emptyExtendedIsolationForestModelWriteReadTest")
+  def emptyExtendedIsolationForestModelWriteReadTest(): Unit = {
+
+    val spark = getSparkSession
+
+    // Create an extended isolation forest model with no isolation trees
+    val extendedIFModel1 =
+      new ExtendedIsolationForestModel(
+        "testUid",
+        Array(),
+        numSamples = 2,
+        numFeatures = 2,
+        totalNumFeatures = 2,
+      )
+    extendedIFModel1.setOutlierScoreThreshold(0.5)
+
+    // Write the trained model to disk and then read it back from disk
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/emptyExtendedIsolationForestModelWriteReadTest"
+    extendedIFModel1.write.overwrite().save(savePath)
+    val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
+    deleteDirectory(new File(savePath))
+
+    // Assert that all parameter values are equal
+    Assert.assertEquals(
+      extendedIFModel1.extractParamMap().toString,
+      extendedIFModel2.extractParamMap().toString,
+    )
+    Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
+    Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
+    Assert.assertEquals(
+      extendedIFModel1.getTotalNumFeatures,
+      extendedIFModel2.getTotalNumFeatures,
+    )
+    Assert.assertEquals(
+      extendedIFModel1.getOutlierScoreThreshold,
+      extendedIFModel2.getOutlierScoreThreshold,
+    )
+
+    // Assert that the loaded model has 0 extended trees
+    Assert.assertEquals(extendedIFModel2.extendedIsolationTrees.length, 0)
+
+    spark.stop()
+  }
+
+  @Test(
+    description = "emptyExtendedIsolationForestModelTransformThrowsTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def emptyExtendedIsolationForestModelTransformThrowsTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = Seq(Tuple1(Vectors.dense(1.0, 2.0))).toDF("features")
+    val emptyModel =
+      new ExtendedIsolationForestModel(
+        "testUid",
+        Array(),
+        numSamples = 2,
+        numFeatures = 2,
+        totalNumFeatures = 2,
+      )
+
+    try
+      emptyModel.transform(data)
+    finally
+      spark.stop()
+  }
+
+  @Test(
+    description = "extendedIsolationForestModelNumSamplesOneTransformThrowsTest",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+  )
+  def extendedIsolationForestModelNumSamplesOneTransformThrowsTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = Seq(Tuple1(Vectors.dense(1.0, 2.0))).toDF("features")
+    val invalidModel = new ExtendedIsolationForestModel(
+      "testUid",
+      Array(new ExtendedIsolationTree(ExtendedExternalNode(2))),
+      numSamples = 1,
+      numFeatures = 2,
+      totalNumFeatures = 2,
+    )
+
+    try
+      invalidModel.transform(data)
+    finally
+      spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestModelFeatureDimensionValidationTest")
+  def extendedIsolationForestModelFeatureDimensionValidationTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val validModel = new ExtendedIsolationForestModel(
+      "testUid",
+      Array(new ExtendedIsolationTree(ExtendedExternalNode(2))),
+      numSamples = 2,
+      numFeatures = 2,
+      totalNumFeatures = 2,
+    )
+
+    try
+      Seq(
+        Vectors.dense(1.0),
+        Vectors.dense(1.0, 2.0, 3.0),
+      ).foreach { invalidVector =>
+        try {
+          validModel.transform(Seq(Tuple1(invalidVector)).toDF("features")).collect()
+          Assert.fail(s"Expected feature-dimension validation to fail for $invalidVector.")
+        } catch {
+          case error: Exception =>
+            assertErrorContains(error, "did not match the model's training dimension 2")
+        }
+      }
+    finally
+      spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestZeroSizeLeafWriteReadTest")
+  def extendedIsolationForestZeroSizeLeafWriteReadTest(): Unit = {
+
+    val spark = getSparkSession
+
+    // Build a hand-crafted tree containing ExtendedExternalNode(0) to simulate a degenerate
+    // hyperplane split where all points went to one side.
+    val zeroLeaf = ExtendedExternalNode(0)
+    val normalLeaf = ExtendedExternalNode(5)
+    val splitHyperplane =
+      SplitHyperplane(Array(0, 1), Array(0.7071067812f, 0.7071067812f), 1.5)
+    val root = ExtendedInternalNode(zeroLeaf, normalLeaf, splitHyperplane)
+    val tree = new ExtendedIsolationTree(root)
+
+    val extendedIFModel1 =
+      new ExtendedIsolationForestModel(
+        "testUidZeroLeaf",
+        Array(tree),
+        numSamples = 5,
+        numFeatures = 2,
+        totalNumFeatures = 2,
+      )
+    extendedIFModel1.setOutlierScoreThreshold(0.5)
+
+    // Write and read back
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/savedExtendedIFModelZeroSizeLeaf"
+    extendedIFModel1.write.overwrite().save(savePath)
+    val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
+    deleteDirectory(new File(savePath))
+
+    // Assert model params survived
+    Assert.assertEquals(extendedIFModel1.getNumSamples, extendedIFModel2.getNumSamples)
+    Assert.assertEquals(extendedIFModel1.getNumFeatures, extendedIFModel2.getNumFeatures)
+    Assert.assertEquals(
+      extendedIFModel1.getTotalNumFeatures,
+      extendedIFModel2.getTotalNumFeatures,
+    )
+    Assert.assertEquals(
+      extendedIFModel1.getOutlierScoreThreshold,
+      extendedIFModel2.getOutlierScoreThreshold,
+    )
+
+    // Assert the tree structure survived, including the zero-size leaf
+    Assert.assertEquals(extendedIFModel2.extendedIsolationTrees.length, 1)
+    assertTreesEqual(
+      extendedIFModel1.extendedIsolationTrees.head.extendedNode,
+      extendedIFModel2.extendedIsolationTrees.head.extendedNode,
+    )
+
+    // Explicitly verify the zero-size leaf is preserved
+    val loadedRoot = extendedIFModel2.extendedIsolationTrees.head.extendedNode
+      .asInstanceOf[ExtendedInternalNode]
+    val loadedLeftLeaf = loadedRoot.leftChild.asInstanceOf[ExtendedExternalNode]
+    Assert.assertEquals(loadedLeftLeaf.numInstances, 0L, "zero-size leaf must survive save/load")
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestDefaultExtensionLevelWriteReadTest")
+  def extendedIsolationForestDefaultExtensionLevelWriteReadTest(): Unit = {
+
+    val spark = getSparkSession
+    import spark.implicits._
+
+    val data = loadMammographyData(spark)
+
+    // Train without explicitly setting extensionLevel — should default to numFeatures - 1
+    val extendedIF = new ExtendedIsolationForest()
+      .setNumEstimators(10)
+      .setBootstrap(false)
+      .setMaxSamples(256)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.0)
+      .setRandomSeed(1)
+
+    val extendedIFModel1 = extendedIF.fit(data)
+
+    // The resolved extensionLevel should equal numFeatures - 1 (mammography has 6 features)
+    val expectedExtensionLevel = extendedIFModel1.getNumFeatures - 1
+    Assert.assertEquals(
+      extendedIFModel1.getExtensionLevel,
+      expectedExtensionLevel,
+      "extensionLevel should default to numFeatures - 1 when not explicitly set",
+    )
+
+    // Save/load and verify the resolved extensionLevel persists
+    val savePath =
+      System.getProperty("java.io.tmpdir") + "/savedExtendedIFModelDefaultExtLevel"
+    extendedIFModel1.write.overwrite().save(savePath)
+    val extendedIFModel2 = ExtendedIsolationForestModel.load(savePath)
+    deleteDirectory(new File(savePath))
+
+    Assert.assertEquals(
+      extendedIFModel2.getExtensionLevel,
+      expectedExtensionLevel,
+      "extensionLevel should persist through save/load",
+    )
+
+    spark.stop()
+  }
+
+  @Test(description = "savedExtendedIsolationForestModelTreeStructureTest")
+  def savedExtendedIsolationForestModelTreeStructureTest(): Unit = {
+
+    val spark = getSparkSession
+
+    val modelPath = "src/test/resources/savedExtendedIsolationForestModel"
+    val extendedIFModel = ExtendedIsolationForestModel.load(modelPath)
+    val observedTreeStructure = extendedIFModel.extendedIsolationTrees.head.extendedNode.toString
+
+    val expectedTreeStructurePath = "src/test/resources/expectedExtendedTreeStructure.txt"
+    val bufferedSource = scala.io.Source.fromFile(expectedTreeStructurePath)
+    val expectedTreeStructure = bufferedSource.mkString
+    bufferedSource.close()
+
+    Assert.assertEquals(observedTreeStructure, expectedTreeStructure)
+
+    spark.stop()
+  }
+
+  @Test(enabled = false, description = "regenerateGoldenExtendedModel")
+  def regenerateGoldenExtendedModel(): Unit = {
+
+    val spark = getSparkSession
+    import spark.implicits._
+
+    val data = loadMammographyData(spark)
+
+    val extendedIF = new ExtendedIsolationForest()
+      .setNumEstimators(100)
+      .setBootstrap(false)
+      .setMaxSamples(256)
+      .setMaxFeatures(1.0)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setContamination(0.0232)
+      .setContaminationError(0.0)
+      .setRandomSeed(1)
+
+    val model = extendedIF.fit(data)
+
+    val modelPath = "src/test/resources/savedExtendedIsolationForestModel"
+    deleteDirectory(new File(modelPath))
+    model.write.overwrite().save(modelPath)
+
+    val treeStructure = model.extendedIsolationTrees.head.extendedNode.toString
+    val writer = new java.io.PrintWriter("src/test/resources/expectedExtendedTreeStructure.txt")
+    writer.print(treeStructure)
+    writer.close()
+
+    println(s"Golden model saved to $modelPath")
+    println(s"Tree structure length: ${treeStructure.length}")
+
+    spark.stop()
+  }
+}
