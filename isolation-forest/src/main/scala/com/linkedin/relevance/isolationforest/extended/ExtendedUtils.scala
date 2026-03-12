@@ -47,6 +47,7 @@ private[isolationforest] object ExtendedUtils extends Serializable {
       var sum = 0.0
       var i = 0
       while (i < indices.length) {
+        // Cast to float to match DataPoint (Array[Float]) precision used during training.
         sum += weights(i) * features(indices(i)).toFloat
         i += 1
       }
