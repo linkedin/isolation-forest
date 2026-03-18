@@ -1,6 +1,6 @@
 package com.linkedin.relevance.isolationforest.core
 
-import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, OutlierScore}
+import com.linkedin.relevance.isolationforest.core.Utils.{DataPoint, OutlierScore, ResolvedParams}
 import org.apache.spark.{HashPartitioner, TaskContext}
 import org.apache.spark.sql.{DataFrame, Dataset}
 import org.apache.spark.internal.Logging
@@ -10,6 +10,72 @@ import scala.language.reflectiveCalls
 import scala.reflect.ClassTag
 
 private[isolationforest] object SharedTrainLogic extends Logging {
+
+  /**
+   * Validates maxFeatures and maxSamples against the input dataset and determines the resolved
+   * values actually used to train the model.
+   *
+   * @param dataset
+   *   The input dataset.
+   * @param maxFeatures
+   *   The user-specified maxFeatures parameter value.
+   * @param maxSamples
+   *   The user-specified maxSamples parameter value.
+   * @return
+   *   A ResolvedParams instance containing the resolved values.
+   */
+  def validateAndResolveParams(
+    dataset: Dataset[DataPoint],
+    maxFeatures: Double,
+    maxSamples: Double,
+  ): ResolvedParams = {
+
+    val totalNumFeatures = dataset.head().features.length
+    val numFeatures = if (maxFeatures > 1.0) {
+      math.floor(maxFeatures).toInt
+    } else {
+      math.floor(maxFeatures * totalNumFeatures).toInt
+    }
+    logInfo(
+      s"User specified number of features used to train each tree over total number of" +
+        s" features: ${numFeatures} / ${totalNumFeatures}",
+    )
+    require(
+      numFeatures > 0,
+      s"parameter maxFeatures given invalid value ${maxFeatures}" +
+        s" specifying the use of ${numFeatures} features, but >0 features are required.",
+    )
+    require(
+      numFeatures <= totalNumFeatures,
+      s"parameter maxFeatures given invalid value" +
+        s" ${maxFeatures} specifying the use of ${numFeatures} features, but only" +
+        s" ${totalNumFeatures} features are available.",
+    )
+
+    val totalNumSamples = dataset.count()
+    val numSamples = if (maxSamples > 1.0) {
+      math.floor(maxSamples).toInt
+    } else {
+      math.floor(maxSamples * totalNumSamples).toInt
+    }
+    logInfo(
+      s"User specified number of samples used to train each tree over total number of" +
+        s" samples: ${numSamples} / ${totalNumSamples}",
+    )
+    require(
+      numSamples >= 2,
+      s"parameter maxSamples given invalid value ${maxSamples}" +
+        s" specifying the use of ${numSamples} samples, but >=2 samples are required.",
+    )
+    require(
+      numSamples <= totalNumSamples,
+      s"parameter maxSamples given invalid value" +
+        s" ${maxSamples} specifying the use of ${numSamples} samples, but only" +
+        s" ${totalNumSamples} samples are in the input dataset.",
+    )
+
+    ResolvedParams(numFeatures, totalNumFeatures, numSamples, totalNumSamples)
+  }
 
   /**
    * Helper that bags the data (with possible up-sampling), flattens it, repartitions by tree index,
@@ -219,6 +285,11 @@ private[isolationforest] object SharedTrainLogic extends Logging {
 
         // Shuffle, then slice to limit the data
         val dataForTree = rnd.shuffle(x.toSeq).slice(0, numSamples).toArray
+        if (dataForTree.isEmpty)
+          throw new IllegalStateException(
+            s"Partition $partitionId received zero samples for tree training." +
+              s" This can happen with very small maxSamples values. Try increasing maxSamples.",
+          )
         if (dataForTree.length != numSamples)
           logWarning(
             s"Isolation tree with random seed ${seed} is trained using " +

@@ -15,34 +15,47 @@
   - [Model parameters](#model-parameters)
   - [Training and scoring](#training-and-scoring)
   - [Saving and loading a trained model](#saving-and-loading-a-trained-model)
+- [Extended Isolation Forest](#extended-isolation-forest)
+  - [When to use Extended Isolation Forest](#when-to-use-extended-isolation-forest)
+  - [Extended Isolation Forest parameters](#extended-isolation-forest-parameters)
+  - [Extended Isolation Forest usage example](#extended-isolation-forest-usage-example)
 - [ONNX conversion for portable inference](#onnx-conversion-for-portable-inference)
   - [Converting a trained model to ONNX](#converting-a-trained-model-to-onnx)
   - [Using the ONNX model for inference (example in Python)](#using-the-onnx-model-for-inference-example-in-python)
 - [Performance and benchmarks](#performance-and-benchmarks)
 - [Copyright and license](#copyright-and-license)
 - [Contributing](#contributing)
+- [Citing this project](#citing-this-project)
 - [References](#references)
 
 ## Introduction
 
 This is a distributed Scala/Spark implementation of the Isolation Forest unsupervised outlier detection
-algorithm. It features support for ONNX export for easy cross-platform inference. This library was created
-by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the LinkedIn Anti-Abuse AI team.
+algorithm. It includes both the standard Isolation Forest and the Extended Isolation Forest,
+which uses random hyperplane splits to eliminate the axis-aligned bias of the original algorithm. The standard
+Isolation Forest also features support for ONNX export for easy cross-platform inference. This library was
+created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the LinkedIn Anti-Abuse AI team.
 
 ## Features
 
 * **Distributed training and scoring:** The `isolation-forest` module supports distributed training and scoring in Scala
   using Spark data structures. It inherits from the `Estimator` and `Model` classes in [Spark's ML library](https://spark.apache.org/mllib/) in
   order to take advantage of machinery such as `Pipeline`s. Model persistence on HDFS is supported.
-* **Broad portability via ONNX:** The `isolation-forest-onnx` module provides Python-based converter to convert a
-  trained model to ONNX format for broad portability across platforms and languages. [ONNX](https://onnx.ai/) is an open format built
-  to represent machine learning models.
+* **Extended Isolation Forest:** The `ExtendedIsolationForest` variant uses random hyperplane splits instead of
+  axis-aligned splits, eliminating the directional bias present in the standard algorithm. This is especially
+  useful for detecting anomalies in data with correlated features or anomalies that don't align with individual feature axes.
+* **Broad portability via ONNX:** The `isolation-forest-onnx` module provides a Python-based converter to convert a
+  trained standard `IsolationForestModel` to ONNX format for broad portability across platforms and languages.
+  [ONNX](https://onnx.ai/) is an open format built to represent machine learning models.
+  **Note:** ONNX export is currently supported for the standard `IsolationForest` only. The `ExtendedIsolationForest`
+  uses hyperplane splits that are not compatible with the axis-aligned tree ensemble representation used by the
+  ONNX converter.
 
 ## Getting started
 
 ### Building the library
 
-To build using the default of Scala 2.13.14 and Spark 3.5.1, run the following:
+To build using the default of Scala 2.13.14 and Spark 3.5.5, run the following:
 
 ```bash
 ./gradlew build
@@ -53,7 +66,7 @@ If you want to use the library with arbitrary Spark and Scala versions, you can 
 build command.
 
 ```bash
-./gradlew build -PsparkVersion=3.5.1 -PscalaVersion=2.13.14
+./gradlew build -PsparkVersion=3.5.5 -PscalaVersion=2.13.14
 ```
 
 To force a rebuild of the library, you can use:
@@ -76,7 +89,7 @@ artifact versions.
 The artifacts are available in Maven Central, so you can specify the Maven Central repository in the top-level
 `build.gradle` file.
 
-```
+```groovy
 repositories {
     mavenCentral()
 }
@@ -85,9 +98,9 @@ repositories {
 Add the isolation-forest dependency to the module-level `build.gradle` file. Here is an example for a recent
 spark scala version combination.
 
-```
+```groovy
 dependencies {
-    compile 'com.linkedin.isolation-forest:isolation-forest_3.5.1_2.13:3.2.3'
+    implementation("com.linkedin.isolation-forest:isolation-forest_3.5.5_2.13:<latest-version>")
 }
 ```
 
@@ -96,11 +109,11 @@ dependencies {
 If you are using the Maven Central repository, declare the isolation-forest dependency in your project's `pom.xml` file.
 Here is an example for a recent Spark/Scala version combination.
 
-```
+```xml
 <dependency>
   <groupId>com.linkedin.isolation-forest</groupId>
-  <artifactId>isolation-forest_3.5.1_2.13</artifactId>
-  <version>3.2.3</version>
+  <artifactId>isolation-forest_3.5.5_2.13</artifactId>
+  <version>&lt;latest-version&gt;</version>
 </dependency>
 ```
 
@@ -121,14 +134,13 @@ Here is an example for a recent Spark/Scala version combination.
 | predictionCol      | "predictedLabel" | The predicted label. This column is appended to the input DataFrame upon scoring.                                                                                                                                                                                                                                                                                                    |
 | scoreCol           | "outlierScore"   | The outlier score. This column is appended to the input DataFrame upon scoring.                                                                                                                                                                                                                                                                                                      |
 
-
 ### Training and scoring
 
 Here is an example demonstrating how to import the library, create a new `IsolationForest`
 instance, set the model hyperparameters, train the model, and then score the training data. `data`
 is a Spark DataFrame with a column named `features` that contains a
 `org.apache.spark.ml.linalg.Vector` of the attributes to use for training. In this example, the
-DataFrame `data` also has a `labels` column; it is not used in the training process, but could
+DataFrame `data` also has a `label` column; it is not used in the training process, but could
 be useful for model evaluation.
 
 ```scala
@@ -155,7 +167,8 @@ val assembler = new VectorAssembler()
   .setOutputCol("features")
 val data = assembler
   .transform(rawData)
-  .select(col("features"), col(labelCol).as("label"))
+  .withColumnRenamed(labelCol, "label")
+  .select("features", "label")
 
 // scala> data.printSchema
 // root
@@ -221,7 +234,85 @@ isolationForestModel.write.overwrite.save(path)
 val isolationForestModel2 = IsolationForestModel.load(path)
 ```
 
+## Extended Isolation Forest
+
+The Extended Isolation Forest (EIF) generalizes the standard Isolation Forest by replacing axis-aligned
+splits with random hyperplane splits. This eliminates the bias that standard Isolation Forest has toward
+detecting anomalies along individual feature axes, making it more effective for data with correlated
+features or anomalies that lie along non-axis-aligned directions. For full details, see
+[Hariri et al., "Extended Isolation Forest," 2018](https://arxiv.org/abs/1811.02141).
+
+### When to use Extended Isolation Forest
+
+Use `ExtendedIsolationForest` instead of `IsolationForest` when:
+
+* Your data has correlated features where anomalies may not be separable along any single axis.
+* You observe "ghost" high-score regions along feature axes in standard IF that don't correspond to
+  real anomalies (a known artifact of axis-aligned splits).
+* You want a more rotationally invariant anomaly detector.
+
+The standard `IsolationForest` remains a good default for high-dimensional, uncorrelated data where
+axis-aligned splits are sufficient and computational cost matters.
+
+### Extended Isolation Forest parameters
+
+`ExtendedIsolationForest` accepts all the same parameters as `IsolationForest` (see the
+[model parameters table](#model-parameters) above), plus one additional parameter:
+
+| Parameter      | Default Value       | Description                                                                                                                                                                                          |
+|----------------|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| extensionLevel | numFeatures - 1     | Controls the number of non-zero coordinates in each random hyperplane normal vector. `extensionLevel + 1` coordinates are non-zero. `0` uses axis-aligned splits. The maximum value is `numFeatures - 1` (fully extended), which is the default if not set. EIF stores these hyperplanes sparsely, so per-node storage and dot products scale with the number of non-zero coordinates rather than the full input dimension. |
+
+**Important: interaction with `maxFeatures`.** When `maxFeatures < 1.0`, each tree trains on a random
+subset of features. The `extensionLevel` is relative to this subspace, not the original dataset
+dimensionality. For example, if your data has 10 features and `maxFeatures = 0.5`, each tree uses 5
+features, and the valid range for `extensionLevel` is `[0, 4]`. If not set, `extensionLevel` defaults
+to `numFeatures - 1` for the resolved subspace. If you explicitly set `extensionLevel` to a value
+greater than `numFeatures - 1`, training will throw an error.
+
+EIF hyperplanes are stored in the original feature space using only their non-zero coordinates. In
+practice, this means `extensionLevel` controls not only expressiveness but also node-local storage
+and traversal cost, while `maxFeatures` still determines the feature subspace available to each
+tree.
+
+### Extended Isolation Forest usage example
+
+```scala
+import com.linkedin.relevance.isolationforest.extended._
+
+val contamination = 0.02
+val extendedIsolationForest = new ExtendedIsolationForest()
+  .setNumEstimators(100)
+  .setBootstrap(false)
+  .setMaxSamples(256)
+  .setMaxFeatures(1.0)
+  .setFeaturesCol("features")
+  .setPredictionCol("predictedLabel")
+  .setScoreCol("outlierScore")
+  .setContamination(contamination)
+  .setContaminationError(0.01 * contamination)
+  .setExtensionLevel(5)  // Fully extended for a 6-feature dataset (extensionLevel + 1 = 6 non-zero coordinates)
+  .setRandomSeed(1)
+
+val extendedIsolationForestModel = extendedIsolationForest.fit(data)
+val dataWithScores = extendedIsolationForestModel.transform(data)
+```
+
+Saving and loading works the same way as the standard model:
+
+```scala
+// Save
+extendedIsolationForestModel.write.overwrite.save(path)
+
+// Load
+val loadedModel = ExtendedIsolationForestModel.load(path)
+```
+
 ## ONNX conversion for portable inference
+
+> **Note:** ONNX conversion is supported for the standard `IsolationForestModel` only. The
+> `ExtendedIsolationForestModel` uses hyperplane-based splits that are not compatible with the
+> axis-aligned tree ensemble representation used by the current ONNX converter.
 
 ### Converting a trained model to ONNX
 
@@ -231,7 +322,7 @@ The ONNX converter can be installed using `pip`. It is recommended to use the sa
 version of the `isolation-forest` library used to train the model.
 
 ```bash
-pip install isolation-forest-onnx==3.2.7
+pip install isolation-forest-onnx==<matching-version>
 ```
 
 You can then import and use the converter in Python.
@@ -272,12 +363,13 @@ from onnxruntime import InferenceSession
 # `onnx_model_path` the same path used above in the convert and save operation
 onnx_model_path = '/user/testuser/isolationForestWriteTest.onnx'
 dataset_path = 'isolation-forest-onnx/test/resources/shuttle.csv'
+num_examples_to_print = 10
 
 # Load data
 input_data = np.loadtxt(dataset_path, delimiter=',')
 num_features = input_data.shape[1] - 1
 last_col_index = num_features
-print(f'Number of features for {dataset_name}: {num_features}')
+print(f'Number of features: {num_features}')
 
 # The last column is the label column
 input_dict = {'features': np.delete(input_data, last_col_index, 1).astype(dtype=np.float32)}
@@ -296,30 +388,69 @@ print(np.transpose(actual_outlier_scores[:num_examples_to_print])[0])
 
 ## Performance and benchmarks
 
-The original 2008 "Isolation forest" paper by Liu et al. published the AUROC results obtained by
-applying the algorithm to 12 benchmark outlier detection datasets. We applied our implementation of
-the isolation forest algorithm to the same 12 datasets using the same model parameter values used in
-the original paper. We used 10 trials per dataset each with a unique random seed and averaged the
-result. The quoted uncertainty is the one-sigma error on the mean.
+We benchmarked the standard Isolation Forest (`StandardIF`), Extended Isolation Forest at extension
+level 0 (`ExtendedIF_0`), and the fully extended variant (`ExtendedIF_max`) against the Liu et al.
+2008 paper results and the
+[reference Python EIF implementation](https://github.com/sahandha/eif) (`Ref. Python`). All results
+use 100 trees, 256 samples per tree, 10 trials with unique random seeds, and report the mean
+&plusmn; standard error of the mean. The `Ref. Python` columns show EIF results at the corresponding
+extension level, not standard IF.
 
-| Dataset                                                                            | Expected mean AUROC (from Liu et al.) | Observed mean AUROC (from this implementation) |
-|------------------------------------------------------------------------------------|---------------------------------------|------------------------------------------------|
-| [Http (KDDCUP99)](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/)            | 1.00                                  | 0.99973 &plusmn; 0.00007                       |
-| [ForestCover](http://odds.cs.stonybrook.edu/forestcovercovertype-dataset/)         | 0.88                                  | 0.903 &plusmn; 0.005                           |
-| [Mulcross](https://www.openml.org/d/40897)                                         | 0.97                                  | 0.9926 &plusmn; 0.0006                         |
-| [Smtp (KDDCUP99)](http://odds.cs.stonybrook.edu/smtp-kddcup99-dataset/)            | 0.88                                  | 0.907 &plusmn; 0.001                           |
-| [Shuttle](http://odds.cs.stonybrook.edu/shuttle-dataset/)                          | 1.00                                  | 0.9974 &plusmn; 0.0014                         |
-| [Mammography](http://odds.cs.stonybrook.edu/mammography-dataset/)                  | 0.86                                  | 0.8636 &plusmn; 0.0015                         |
-| [Annthyroid](http://odds.cs.stonybrook.edu/annthyroid-dataset/)                    | 0.82                                  | 0.815 &plusmn; 0.006                           |
-| [Satellite](http://odds.cs.stonybrook.edu/satellite-dataset/)                      | 0.71                                  | 0.709 &plusmn; 0.004                           |
-| [Pima](http://odds.cs.stonybrook.edu/pima-indians-diabetes-dataset/)               | 0.67                                  | 0.651 &plusmn; 0.003                           |
-| [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 0.99                                  | 0.9862 &plusmn; 0.0003                         |
-| [Arrhythmia](http://odds.cs.stonybrook.edu/arrhythmia-dataset/)                    | 0.80                                  | 0.804 &plusmn; 0.002                           |
-| [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/)                    | 0.85                                  | 0.8481 &plusmn; 0.0002                         |
+<div style="overflow-x: auto;">
 
-Our implementation provides AUROC values that are in very good agreement with the results in the original
-Liu et al. publication. There are a few very small discrepancies that are likely due to the limited
-precision of the AUROC values reported in Liu et al.
+| Dataset | Dim | Model | AUROC | AUPRC | Liu&nbsp;et&nbsp;al.&nbsp;AUROC&nbsp;(IF) | Ref.&nbsp;Python&nbsp;AUROC&nbsp;(EIF) | Ref.&nbsp;Python&nbsp;AUPRC&nbsp;(EIF) |
+|---|--:|---|---|---|--:|---|---|
+| [Annthyroid](http://odds.cs.stonybrook.edu/annthyroid-dataset/) | 6 | StandardIF | 0.813&nbsp;&plusmn;&nbsp;0.004 | 0.312&nbsp;&plusmn;&nbsp;0.004 | 0.82 | - | - |
+| | | ExtendedIF_0 | 0.813&nbsp;&plusmn;&nbsp;0.004 | 0.307&nbsp;&plusmn;&nbsp;0.004 | - | 0.822&nbsp;&plusmn;&nbsp;0.004 | 0.314&nbsp;&plusmn;&nbsp;0.007 |
+| | | ExtendedIF_max | 0.646&nbsp;&plusmn;&nbsp;0.002 | 0.1791&nbsp;&plusmn;&nbsp;0.0017 | - | 0.651&nbsp;&plusmn;&nbsp;0.003 | 0.183&nbsp;&plusmn;&nbsp;0.005 |
+| [Arrhythmia](http://odds.cs.stonybrook.edu/arrhythmia-dataset/) | 274 | StandardIF | 0.8064&nbsp;&plusmn;&nbsp;0.0019 | 0.494&nbsp;&plusmn;&nbsp;0.006 | 0.80 | - | - |
+| | | ExtendedIF_0 | 0.802&nbsp;&plusmn;&nbsp;0.002 | 0.478&nbsp;&plusmn;&nbsp;0.004 | - | 0.796&nbsp;&plusmn;&nbsp;0.004 | 0.462&nbsp;&plusmn;&nbsp;0.005 |
+| | | ExtendedIF_max | 0.810&nbsp;&plusmn;&nbsp;0.004 | 0.495&nbsp;&plusmn;&nbsp;0.005 | - | 0.803&nbsp;&plusmn;&nbsp;0.003 | 0.490&nbsp;&plusmn;&nbsp;0.004 |
+| [Breastw](http://odds.cs.stonybrook.edu/breast-cancer-wisconsin-original-dataset/) | 9 | StandardIF | 0.9864&nbsp;&plusmn;&nbsp;0.0003 | 0.9684&nbsp;&plusmn;&nbsp;0.0008 | 0.99 | - | - |
+| | | ExtendedIF_0 | 0.9878&nbsp;&plusmn;&nbsp;0.0003 | 0.9726&nbsp;&plusmn;&nbsp;0.0008 | - | 0.9873&nbsp;&plusmn;&nbsp;0.0005 | 0.9704&nbsp;&plusmn;&nbsp;0.0016 |
+| | | ExtendedIF_max | 0.9835&nbsp;&plusmn;&nbsp;0.0004 | 0.9569&nbsp;&plusmn;&nbsp;0.0015 | - | 0.9841&nbsp;&plusmn;&nbsp;0.0006 | 0.959&nbsp;&plusmn;&nbsp;0.002 |
+| [Cardio](http://odds.cs.stonybrook.edu/cardiotocography-dataset/) | 21 | StandardIF | 0.928&nbsp;&plusmn;&nbsp;0.002 | 0.565&nbsp;&plusmn;&nbsp;0.008 | - | - | - |
+| | | ExtendedIF_0 | 0.921&nbsp;&plusmn;&nbsp;0.002 | 0.553&nbsp;&plusmn;&nbsp;0.009 | - | 0.918&nbsp;&plusmn;&nbsp;0.003 | 0.546&nbsp;&plusmn;&nbsp;0.013 |
+| | | ExtendedIF_max | 0.933&nbsp;&plusmn;&nbsp;0.002 | 0.541&nbsp;&plusmn;&nbsp;0.006 | - | 0.931&nbsp;&plusmn;&nbsp;0.002 | 0.547&nbsp;&plusmn;&nbsp;0.009 |
+| [ForestCover](http://odds.cs.stonybrook.edu/forestcovercovertype-dataset/) | 10 | StandardIF | 0.882&nbsp;&plusmn;&nbsp;0.006 | 0.051&nbsp;&plusmn;&nbsp;0.003 | 0.88 | - | - |
+| | | ExtendedIF_0 | 0.865&nbsp;&plusmn;&nbsp;0.008 | 0.050&nbsp;&plusmn;&nbsp;0.005 | - | 0.872&nbsp;&plusmn;&nbsp;0.010 | 0.049&nbsp;&plusmn;&nbsp;0.004 |
+| | | ExtendedIF_max | 0.688&nbsp;&plusmn;&nbsp;0.008 | 0.0138&nbsp;&plusmn;&nbsp;0.0003 | - | 0.662&nbsp;&plusmn;&nbsp;0.009 | 0.0129&nbsp;&plusmn;&nbsp;0.0004 |
+| [Http (KDDCUP99)](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/) | 3 | StandardIF | 0.99970&nbsp;&plusmn;&nbsp;0.00010 | 0.93&nbsp;&plusmn;&nbsp;0.02 | 1.00 | - | - |
+| | | ExtendedIF_0 | 0.99410&nbsp;&plusmn;&nbsp;0.00010 | 0.392&nbsp;&plusmn;&nbsp;0.004 | - | 0.99390&nbsp;&plusmn;&nbsp;0.00010 | 0.379&nbsp;&plusmn;&nbsp;0.004 |
+| | | ExtendedIF_max | 0.99410&nbsp;&plusmn;&nbsp;0.00010 | 0.379&nbsp;&plusmn;&nbsp;0.006 | - | 0.9939&nbsp;&plusmn;&nbsp;0.0003 | 0.371&nbsp;&plusmn;&nbsp;0.009 |
+| [Ionosphere](http://odds.cs.stonybrook.edu/ionosphere-dataset/) | 33 | StandardIF | 0.8443&nbsp;&plusmn;&nbsp;0.0002 | 0.8014&nbsp;&plusmn;&nbsp;0.0003 | 0.85 | - | - |
+| | | ExtendedIF_0 | 0.8568&nbsp;&plusmn;&nbsp;0.0006 | 0.8108&nbsp;&plusmn;&nbsp;0.0007 | - | 0.8556&nbsp;&plusmn;&nbsp;0.0016 | 0.808&nbsp;&plusmn;&nbsp;0.002 |
+| | | ExtendedIF_max | 0.9075&nbsp;&plusmn;&nbsp;0.0002 | 0.8804&nbsp;&plusmn;&nbsp;0.0002 | - | 0.9061&nbsp;&plusmn;&nbsp;0.0014 | 0.876&nbsp;&plusmn;&nbsp;0.002 |
+| [Mammography](http://odds.cs.stonybrook.edu/mammography-dataset/) | 6 | StandardIF | 0.8649&nbsp;&plusmn;&nbsp;0.0015 | 0.218&nbsp;&plusmn;&nbsp;0.007 | 0.86 | - | - |
+| | | ExtendedIF_0 | 0.865&nbsp;&plusmn;&nbsp;0.002 | 0.220&nbsp;&plusmn;&nbsp;0.006 | - | 0.868&nbsp;&plusmn;&nbsp;0.002 | 0.229&nbsp;&plusmn;&nbsp;0.013 |
+| | | ExtendedIF_max | 0.8630&nbsp;&plusmn;&nbsp;0.0010 | 0.190&nbsp;&plusmn;&nbsp;0.003 | - | 0.8639&nbsp;&plusmn;&nbsp;0.0016 | 0.184&nbsp;&plusmn;&nbsp;0.004 |
+| [Mulcross](https://www.openml.org/d/40897) | 4 | StandardIF | 0.9910&nbsp;&plusmn;&nbsp;0.0009 | 0.852&nbsp;&plusmn;&nbsp;0.014 | 0.97 | - | - |
+| | | ExtendedIF_0 | 0.938&nbsp;&plusmn;&nbsp;0.002 | 0.428&nbsp;&plusmn;&nbsp;0.009 | - | 0.960&nbsp;&plusmn;&nbsp;0.003 | 0.538&nbsp;&plusmn;&nbsp;0.017 |
+| | | ExtendedIF_max | 0.940&nbsp;&plusmn;&nbsp;0.003 | 0.442&nbsp;&plusmn;&nbsp;0.011 | - | 0.941&nbsp;&plusmn;&nbsp;0.005 | 0.45&nbsp;&plusmn;&nbsp;0.02 |
+| [Pima](http://odds.cs.stonybrook.edu/pima-indians-diabetes-dataset/) | 8 | StandardIF | 0.668&nbsp;&plusmn;&nbsp;0.004 | 0.490&nbsp;&plusmn;&nbsp;0.003 | 0.67 | - | - |
+| | | ExtendedIF_0 | 0.667&nbsp;&plusmn;&nbsp;0.004 | 0.507&nbsp;&plusmn;&nbsp;0.004 | - | 0.675&nbsp;&plusmn;&nbsp;0.005 | 0.514&nbsp;&plusmn;&nbsp;0.005 |
+| | | ExtendedIF_max | 0.644&nbsp;&plusmn;&nbsp;0.003 | 0.498&nbsp;&plusmn;&nbsp;0.002 | - | 0.640&nbsp;&plusmn;&nbsp;0.004 | 0.493&nbsp;&plusmn;&nbsp;0.004 |
+| [Satellite](http://odds.cs.stonybrook.edu/satellite-dataset/) | 36 | StandardIF | 0.717&nbsp;&plusmn;&nbsp;0.008 | 0.672&nbsp;&plusmn;&nbsp;0.008 | 0.71 | - | - |
+| | | ExtendedIF_0 | 0.715&nbsp;&plusmn;&nbsp;0.004 | 0.675&nbsp;&plusmn;&nbsp;0.003 | - | 0.700&nbsp;&plusmn;&nbsp;0.004 | 0.664&nbsp;&plusmn;&nbsp;0.006 |
+| | | ExtendedIF_max | 0.725&nbsp;&plusmn;&nbsp;0.003 | 0.704&nbsp;&plusmn;&nbsp;0.004 | - | 0.740&nbsp;&plusmn;&nbsp;0.005 | 0.711&nbsp;&plusmn;&nbsp;0.005 |
+| [Shuttle](http://odds.cs.stonybrook.edu/shuttle-dataset/) | 9 | StandardIF | 0.9971&nbsp;&plusmn;&nbsp;0.0002 | 0.9742&nbsp;&plusmn;&nbsp;0.0017 | 1.00 | - | - |
+| | | ExtendedIF_0 | 0.9974&nbsp;&plusmn;&nbsp;0.0002 | 0.9789&nbsp;&plusmn;&nbsp;0.0014 | - | 0.99750&nbsp;&plusmn;&nbsp;0.00010 | 0.9805&nbsp;&plusmn;&nbsp;0.0010 |
+| | | ExtendedIF_max | 0.9934&nbsp;&plusmn;&nbsp;0.0002 | 0.822&nbsp;&plusmn;&nbsp;0.004 | - | 0.9932&nbsp;&plusmn;&nbsp;0.0002 | 0.818&nbsp;&plusmn;&nbsp;0.003 |
+| [Smtp (KDDCUP99)](http://odds.cs.stonybrook.edu/smtp-kddcup99-dataset/) | 3 | StandardIF | 0.9099&nbsp;&plusmn;&nbsp;0.0014 | 0.00450&nbsp;&plusmn;&nbsp;0.00010 | 0.88 | - | - |
+| | | ExtendedIF_0 | 0.896&nbsp;&plusmn;&nbsp;0.002 | 0.00400&nbsp;&plusmn;&nbsp;0.00010 | - | 0.897&nbsp;&plusmn;&nbsp;0.002 | 0.00410&nbsp;&plusmn;&nbsp;0.00010 |
+| | | ExtendedIF_max | 0.858&nbsp;&plusmn;&nbsp;0.003 | 0.0098&nbsp;&plusmn;&nbsp;0.0011 | - | 0.857&nbsp;&plusmn;&nbsp;0.003 | 0.014&nbsp;&plusmn;&nbsp;0.003 |
+
+</div>
+
+**Key observations:**
+
+* **StandardIF** results are in agreement with the original Liu et al. paper.
+* **ExtendedIF_max closely matches the reference Python EIF** across all 13 datasets.
+* **EIF improves on high-dimensional datasets**, e.g., **ionosphere** (AUROC 0.907 vs 0.844, AUPRC 0.880 vs 0.801) and **satellite**
+  (AUROC 0.725 vs 0.717, AUPRC 0.704 vs 0.672). EIF underperforms IF on some datasets.
+* **ExtendedIF_0 is not equivalent to StandardIF.** Both use axis-aligned splits, but standard IF
+  retries on constant features while EIF does not (matching the reference Python and C++
+  implementations). ExtendedIF_0 closely matches the reference Python EIF on all datasets.
 
 ## Copyright and license
 
@@ -333,8 +464,25 @@ See [License](LICENSE) in the project root for license information.
 
 If you would like to contribute to this project, please review the instructions [here](CONTRIBUTING.md). 
 
+## Citing this project
+
+If you use this library in your research or project, please cite it using the metadata in
+[CITATION.cff](CITATION.cff), or use the following BibTeX entry:
+
+```bibtex
+@software{isolation_forest,
+  author = {Verbus, James},
+  title = {isolation-forest},
+  year = {2019},
+  url = {https://github.com/linkedin/isolation-forest},
+  license = {BSD-2-Clause}
+}
+```
+
 ## References
 
 * F. T. Liu, K. M. Ting, and Z.-H. Zhou, “Isolation forest,” in 2008 Eighth IEEE International Conference on Data Mining, 2008, pp. 413–422.
 * F. T. Liu, K. M. Ting, and Z.-H. Zhou, “Isolation-based anomaly detection,” ACM Transactions on Knowledge Discovery from Data (TKDD), vol. 6, no. 1, p. 3, 2012.
-* Shebuti Rayana (2016).  ODDS Library [http://odds.cs.stonybrook.edu]. Stony Brook, NY: Stony Brook University, Department of Computer Science.
+* S. Hariri, M. Carrasco Kind, and R. J. Brunner, “Extended Isolation Forest,” IEEE Transactions on Knowledge and Data Engineering, 2019. [DOI:10.1109/TKDE.2019.2947676](https://doi.org/10.1109/TKDE.2019.2947676), [arXiv:1811.02141](https://arxiv.org/abs/1811.02141).
+* S. Hariri, "eif: Extended Isolation Forest for Anomaly Detection," [https://github.com/sahandha/eif](https://github.com/sahandha/eif).
+* Shebuti Rayana (2016). ODDS Library [http://odds.cs.stonybrook.edu]. Stony Brook, NY: Stony Brook University, Department of Computer Science.
