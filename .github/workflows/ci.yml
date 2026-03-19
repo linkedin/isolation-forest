@@ -66,6 +66,7 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
+          distribution: 'temurin'
           java-version: ${{ matrix.java-version }}
       - name: Perform build
         env:
@@ -103,6 +104,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
+          distribution: 'temurin'
           java-version: 1.8
       - name: Setup Python
         uses: actions/setup-python@v6  # https://github.com/actions/setup-python
@@ -131,6 +133,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
+          distribution: 'temurin'
           java-version: 1.8
       - name: Release to GitHub
         run: ./gradlew githubRelease
