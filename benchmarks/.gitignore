@@ -1,0 +1,12 @@
+# Benchmark datasets (large; download separately)
+datasets/
+
+# Generated outputs
+eif_synthetic_output/
+eif_synthetic_plots/
+*.svg
+*.pdf
+
+# Python
+__pycache__/
+*.pyc

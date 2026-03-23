@@ -2,6 +2,7 @@ package com.linkedin.relevance.isolationforest.extended
 
 import com.linkedin.relevance.isolationforest.core.TestUtils._
 import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.scalactic.Tolerance._
 import org.scalactic.TripleEquals._
@@ -397,5 +398,249 @@ class ExtendedIsolationForestTest {
       extendedIsolationForest.fit(data)
     finally
       spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestSeedReproducibilityTest")
+  def extendedIsolationForestSeedReproducibilityTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = loadMammographyData(spark)
+
+    val modelA = new ExtendedIsolationForest()
+      .setNumEstimators(50)
+      .setMaxSamples(256)
+      .setFeaturesCol("features")
+      .setScoreCol("outlierScore")
+      .setExtensionLevel(5)
+      .setRandomSeed(42)
+      .fit(data)
+
+    val modelB = new ExtendedIsolationForest()
+      .setNumEstimators(50)
+      .setMaxSamples(256)
+      .setFeaturesCol("features")
+      .setScoreCol("outlierScore")
+      .setExtensionLevel(5)
+      .setRandomSeed(42)
+      .fit(data)
+
+    val scoresA = modelA.transform(data).as[ScoringResult].map(_.outlierScore).collect()
+    val scoresB = modelB.transform(data).as[ScoringResult].map(_.outlierScore).collect()
+
+    val maxDiff = scoresA.zip(scoresB).map { case (a, b) => math.abs(a - b) }.max
+    Assert.assertTrue(
+      maxDiff < 1e-10,
+      s"Same seed should produce identical scores, but max diff = $maxDiff",
+    )
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestScoreRangeTest")
+  def extendedIsolationForestScoreRangeTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = loadMammographyData(spark)
+
+    val model = new ExtendedIsolationForest()
+      .setNumEstimators(100)
+      .setMaxSamples(256)
+      .setFeaturesCol("features")
+      .setScoreCol("outlierScore")
+      .setExtensionLevel(5)
+      .setRandomSeed(1)
+      .fit(data)
+
+    val scores = model.transform(data).as[ScoringResult].map(_.outlierScore).collect()
+
+    Assert.assertTrue(
+      scores.forall(s => s >= 0.0 && s <= 1.0),
+      s"All scores should be in [0, 1], but found min=${scores.min}, max=${scores.max}",
+    )
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestLowDimensional1DTest")
+  def extendedIsolationForestLowDimensional1DTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val normal = (1 to 300).map(_ => Vectors.dense(scala.util.Random.nextGaussian()))
+    val outliers = (1 to 30).map(_ => Vectors.dense(scala.util.Random.nextGaussian() + 5.0))
+    val allPoints = normal ++ outliers
+    val labels = Seq.fill(300)(0.0) ++ Seq.fill(30)(1.0)
+    val data = allPoints.zip(labels).toDF("features", "label")
+
+    // 1D data: only valid extensionLevel is 0
+    val model = new ExtendedIsolationForest()
+      .setNumEstimators(100)
+      .setMaxSamples(256)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setExtensionLevel(0)
+      .setRandomSeed(1)
+      .fit(data)
+
+    val scores = model.transform(data).as[ScoringResult]
+    val metrics = new BinaryClassificationMetrics(scores.rdd.map(x => (x.outlierScore, x.label)))
+    val auroc = metrics.areaUnderROC()
+    Assert.assertTrue(
+      auroc > 0.7,
+      s"Expected AUROC > 0.7 for 1D data with separated outliers, but observed $auroc",
+    )
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestLowDimensional2DTest")
+  def extendedIsolationForestLowDimensional2DTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val rng = new java.util.Random(42)
+    val normal = (1 to 300).map(_ => Vectors.dense(rng.nextGaussian(), rng.nextGaussian()))
+    val outliers =
+      (1 to 30).map(_ => Vectors.dense(rng.nextGaussian() + 5.0, rng.nextGaussian() + 5.0))
+    val allPoints = normal ++ outliers
+    val labels = Seq.fill(300)(0.0) ++ Seq.fill(30)(1.0)
+    val data = allPoints.zip(labels).toDF("features", "label")
+
+    // 2D data: extensionLevel=1 is fully extended
+    val model = new ExtendedIsolationForest()
+      .setNumEstimators(100)
+      .setMaxSamples(256)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setExtensionLevel(1)
+      .setRandomSeed(1)
+      .fit(data)
+
+    val scores = model.transform(data).as[ScoringResult]
+    val metrics = new BinaryClassificationMetrics(scores.rdd.map(x => (x.outlierScore, x.label)))
+    val auroc = metrics.areaUnderROC()
+    Assert.assertTrue(
+      auroc > 0.7,
+      s"Expected AUROC > 0.7 for 2D data with separated outliers, but observed $auroc",
+    )
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestConstantFeaturesTest")
+  def extendedIsolationForestConstantFeaturesTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    // 5D data where features 3 and 4 are constant
+    val rng = new java.util.Random(42)
+    val allPoints = (1 to 300).map { i =>
+      val base =
+        if (i <= 280) Array.fill(5)(rng.nextGaussian())
+        else Array.fill(5)(rng.nextGaussian() + 4.0)
+      base(3) = 0.0
+      base(4) = 1.0
+      Vectors.dense(base)
+    }
+    val labels = Seq.fill(280)(0.0) ++ Seq.fill(20)(1.0)
+    val data = allPoints.zip(labels).toDF("features", "label")
+
+    val model = new ExtendedIsolationForest()
+      .setNumEstimators(100)
+      .setMaxSamples(256)
+      .setFeaturesCol("features")
+      .setPredictionCol("predictedLabel")
+      .setScoreCol("outlierScore")
+      .setExtensionLevel(4)
+      .setRandomSeed(1)
+      .fit(data)
+
+    val scores = model.transform(data).as[ScoringResult]
+    val metrics = new BinaryClassificationMetrics(scores.rdd.map(x => (x.outlierScore, x.label)))
+    val auroc = metrics.areaUnderROC()
+    Assert.assertTrue(
+      auroc > 0.7,
+      s"Expected AUROC > 0.7 with constant features, but observed $auroc",
+    )
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestAllConstantFeaturesTest")
+  def extendedIsolationForestAllConstantFeaturesTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = (1 to 300).map(_ => (Vectors.dense(1.0, 2.0, 3.0), 0.0)).toDF("features", "label")
+
+    val model = new ExtendedIsolationForest()
+      .setNumEstimators(10)
+      .setMaxSamples(256)
+      .setFeaturesCol("features")
+      .setScoreCol("outlierScore")
+      .setExtensionLevel(2)
+      .setRandomSeed(1)
+      .fit(data)
+
+    val scores = model.transform(data).as[ScoringResult].map(_.outlierScore).collect()
+
+    val scoreStd = {
+      val mean = scores.sum / scores.length
+      math.sqrt(scores.map(x => math.pow(x - mean, 2)).sum / scores.length)
+    }
+    Assert.assertTrue(
+      scoreStd < 0.01,
+      s"Expected near-zero score variance for all-constant data, but std = $scoreStd",
+    )
+
+    spark.stop()
+  }
+
+  @Test(description = "extendedIsolationForestTinyDatasetTest")
+  def extendedIsolationForestTinyDatasetTest(): Unit = {
+
+    val spark = getSparkSession
+
+    import spark.implicits._
+
+    val data = Seq(
+      (Vectors.dense(1.0, 2.0), 0.0),
+      (Vectors.dense(10.0, 20.0), 1.0),
+      (Vectors.dense(1.5, 2.5), 0.0),
+    ).toDF("features", "label")
+
+    val model = new ExtendedIsolationForest()
+      .setNumEstimators(10)
+      .setMaxSamples(2)
+      .setFeaturesCol("features")
+      .setScoreCol("outlierScore")
+      .setExtensionLevel(0)
+      .setRandomSeed(1)
+      .fit(data)
+
+    val scores = model.transform(data).as[ScoringResult].map(_.outlierScore).collect()
+    Assert.assertEquals(scores.length, 3, "Should score all 3 rows")
+    Assert.assertTrue(
+      scores.forall(s => s >= 0.0 && s <= 1.0),
+      s"Scores should be in [0, 1] for tiny dataset",
+    )
+
+    spark.stop()
   }
 }

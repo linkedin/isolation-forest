@@ -254,6 +254,23 @@ Use `ExtendedIsolationForest` instead of `IsolationForest` when:
 The standard `IsolationForest` remains a good default for high-dimensional, uncorrelated data where
 axis-aligned splits are sufficient and computational cost matters.
 
+The following heatmaps illustrate the difference on synthetic 2D datasets. Standard IF exhibits
+axis-aligned artifacts (visible as cross-shaped high-score regions), while Extended IF produces
+smooth, rotationally invariant score contours. See the [benchmarks/synthetic](benchmarks/synthetic)
+directory for the scripts that generated these plots.
+
+<p align="center">
+<img src="./assets/single_blob_heatmap.png" alt="Single Blob: Standard IF vs Extended IF" width="85%"/>
+</p>
+
+<p align="center">
+<img src="./assets/two_blobs_heatmap.png" alt="Two Blobs: Standard IF vs Extended IF" width="85%"/>
+</p>
+
+<p align="center">
+<img src="./assets/sinusoid_heatmap.png" alt="Sinusoid: Standard IF vs Extended IF" width="85%"/>
+</p>
+
 ### Extended Isolation Forest parameters
 
 `ExtendedIsolationForest` accepts all the same parameters as `IsolationForest` (see the
@@ -441,6 +458,9 @@ extension level, not standard IF.
 | | | ExtendedIF_max | 0.858&nbsp;&plusmn;&nbsp;0.003 | 0.0098&nbsp;&plusmn;&nbsp;0.0011 | - | 0.857&nbsp;&plusmn;&nbsp;0.003 | 0.014&nbsp;&plusmn;&nbsp;0.003 |
 
 </div>
+
+The scripts used to produce these results are available in the [benchmarks](benchmarks) directory,
+along with instructions for downloading the datasets and running the benchmarks yourself.
 
 **Key observations:**
 
