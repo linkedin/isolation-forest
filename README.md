@@ -254,6 +254,23 @@ Use `ExtendedIsolationForest` instead of `IsolationForest` when:
 The standard `IsolationForest` remains a good default for high-dimensional, uncorrelated data where
 axis-aligned splits are sufficient and computational cost matters.
 
+The following heatmaps, produced using this library's `IsolationForest` and `ExtendedIsolationForest`
+implementations, illustrate the difference on synthetic 2D datasets. Standard IF exhibits
+axis-aligned artifacts (visible as cross-shaped high-score regions), while Extended IF eliminates
+this directional bias.
+
+<p align="center">
+<img src="./assets/single_blob_heatmap.svg" alt="Single Blob: Standard IF vs Extended IF" width="85%"/>
+</p>
+
+<p align="center">
+<img src="./assets/two_blobs_heatmap.svg" alt="Two Blobs: Standard IF vs Extended IF" width="85%"/>
+</p>
+
+<p align="center">
+<img src="./assets/sinusoid_heatmap.svg" alt="Sinusoid: Standard IF vs Extended IF" width="85%"/>
+</p>
+
 ### Extended Isolation Forest parameters
 
 `ExtendedIsolationForest` accepts all the same parameters as `IsolationForest` (see the
