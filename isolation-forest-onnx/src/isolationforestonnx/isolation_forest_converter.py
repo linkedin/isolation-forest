@@ -161,6 +161,7 @@ class IsolationForestConverter:
                 helper.make_opsetid("", 14),
             ],
         )
+        model.ir_version = 10
 
         try:
             checker.check_model(model)
