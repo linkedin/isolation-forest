@@ -69,7 +69,7 @@ def _roc_auc_score(y_true, y_score):
     fpr = np.concatenate(([0], fpr))
 
     # Compute the AUC using trapezoidal integration
-    auc = np.trapz(tpr, fpr)
+    auc = np.trapezoid(tpr, fpr)
 
     return auc
 
