@@ -161,6 +161,9 @@ class IsolationForestConverter:
                 helper.make_opsetid("", 14),
             ],
         )
+        # Pin IR version for maximum portability across ONNX runtimes.
+        # The model only uses opset 14, which is fully supported by IR 10.
+        model.ir_version = 10
 
         try:
             checker.check_model(model)
