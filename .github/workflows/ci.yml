@@ -74,7 +74,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6  # https://github.com/actions/setup-python
         with:
-          python-version: '3.10'
+          python-version: '3.12'
       - name: Perform build
         env:
           SCALA_VERSION: ${{ matrix.scala-version }}
@@ -116,7 +116,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v6  # https://github.com/actions/setup-python
         with:
-          python-version: '3.10'
+          python-version: '3.12'
       - name: Publish to PyPI
         run: ./gradlew publishPythonPackage
         env:
