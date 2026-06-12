@@ -34,7 +34,8 @@ This is a distributed Scala/Spark implementation of the Isolation Forest unsuper
 algorithm. It includes both the standard Isolation Forest and the Extended Isolation Forest,
 which uses random hyperplane splits to eliminate the axis-aligned bias of the original algorithm. The standard
 Isolation Forest also features support for ONNX export for easy cross-platform inference. This library was
-created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the LinkedIn Anti-Abuse AI team.
+created by [James Verbus](https://jverbus.github.io/) from the LinkedIn Anti-Abuse AI team.
+You can find him on [LinkedIn](https://www.linkedin.com/in/jamesverbus/).
 
 ## Features
 
@@ -44,6 +45,7 @@ created by [James Verbus](https://www.linkedin.com/in/jamesverbus/) from the Lin
 * **Extended Isolation Forest:** The `ExtendedIsolationForest` variant uses random hyperplane splits instead of
   axis-aligned splits, eliminating the directional bias present in the standard algorithm. This is especially
   useful for detecting anomalies in data with correlated features or anomalies that don't align with individual feature axes.
+  See this [interactive demo](https://jverbus.github.io/2026/03/18/announcing-extended-isolation-forest-support/#try-it-live) illustrating the difference between Isolation Forest and Extended Isolation Forest.
 * **Broad portability via ONNX:** The `isolation-forest-onnx` module provides a Python-based converter to convert a
   trained standard `IsolationForestModel` to ONNX format for broad portability across platforms and languages.
   [ONNX](https://onnx.ai/) is an open format built to represent machine learning models.
